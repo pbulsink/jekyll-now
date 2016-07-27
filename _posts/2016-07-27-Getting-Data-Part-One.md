@@ -5,12 +5,16 @@ date: "July 28, 2016"
 output: html_document
 status: publish
 published: true
+layout: post
+excerpt_separator: <!--more-->
 tags: R hockey scraping 
 ---
  
 
  
 Much of this blog will be focused on NHL data, as I mentioned in the opening post. There are two main sources for data about NHL hockey, from [Hockey-Reference.com](www.hockey-reference.com) and from the R package [`nhlscrapr`](https://cran.r-project.org/package=nhlscrapr). This post we'll focus on getting score data from Hockey-Reference from the start of the NHL to the present day. 
+ 
+<!--more-->
  
 A typical season's results on Hockey-Reference has this url format (`http://www.hockey-reference.com/leagues/NHL_2016_games.html`), and looks like this:
  

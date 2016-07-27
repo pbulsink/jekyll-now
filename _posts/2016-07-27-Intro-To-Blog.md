@@ -5,6 +5,7 @@ date: "July 27, 2016"
 output: html_document
 status: publish
 published: true
+layout: post
 tags: introduction
 ---
  

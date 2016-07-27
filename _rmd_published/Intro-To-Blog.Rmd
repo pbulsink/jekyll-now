@@ -3,8 +3,9 @@ title: "Intro to Blog"
 author: "Philip Bulsink"
 date: "July 27, 2016"
 output: html_document
-status: publish
+status: posted
 published: true
+layout: post
 tags: introduction
 ---
 
