@@ -3,14 +3,14 @@ title: "Intro to Blog"
 author: "Philip Bulsink"
 date: "July 27, 2016"
 output: html_document
-status: posted
-published: true
+status: process
+published: false
 layout: post
 tags: introduction
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, tidy=TRUE)
 ```
 
 Welcome to my blog! This will contain a mix of stuff, updated when I feel like it. Most of what will be here will be related to NHL hockey analyticss, or other programming projects in R, Python, or Java. 
