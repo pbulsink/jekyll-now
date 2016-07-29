@@ -20,7 +20,7 @@ Much of this blog will be focused on NHL data, as I mentioned in the opening pos
 
 A typical season's results on Hockey-Reference has this url format (`http://www.hockey-reference.com/leagues/NHL_2016_games.html`), and looks like this:
 
-![Hockey-Reference Data](hockey-reference-actual.png)
+![Hockey-Reference Data]({{ site.baseurl }}/images/hockey-reference-actual.png)
 
 Copy-pasting this to import would be tedious, particuarly with 100 years of NHL hockey approaching. That's too much data to handle manually, so we'll write some scraping code to get it for us.
 
