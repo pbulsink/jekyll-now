@@ -18,7 +18,7 @@ Having downloaded data from Hockey-Reference.com in the [last post]({{ site.base
  
 We'll start with combining all the data to one frame. I'm using data from both the NHL and WHA, but fortunately, the data arrives quite uniform. We can actually just merge the data frames we get from `read.csv` together.
  
-Assuming the data is in the `../_data/` folder (that's where mine is), a short set of code will do it all. While there's lots of ways to do this, one that doesn't use any additional libraries is here:
+Assuming the data is in the `./_data/` folder (that's where mine is), a short set of code will do it all. While there's lots of ways to do this, one that doesn't use any additional libraries is here:
  
 
 {% highlight r %}
@@ -29,7 +29,7 @@ fileMerge <- function(pathToFiles = ".") {
     return(unifiedData)
 }
 
-allHockeyData <- fileMerge("../_data/")
+allHockeyData <- fileMerge("./_data/")
 {% endhighlight %}
  
 In this function, the files are discovered by the `list.files` call to the provided or default path. The files are read sequentially by `lapply` call on `read.csv`, producing a list of `data.frame`s The `do.call` function is a built-in that iterates through the provided list `d`, and applies `rbind` across each item, resulting in one `data.frame`.
@@ -42,7 +42,20 @@ head(allHockeyData)
 
 
 {% highlight text %}
-## NULL
+##   X       Date            Visitor  G               Home G.1 X.1 Att.  LOG
+## 1 1 1917-12-19     Toronto Arenas  9 Montreal Wanderers  10     <NA> <NA>
+## 2 2 1917-12-19 Montreal Canadiens  7    Ottawa Senators   4     <NA> <NA>
+## 3 3 1917-12-22 Montreal Canadiens 11 Montreal Wanderers   2     <NA> <NA>
+## 4 4 1917-12-22    Ottawa Senators  4     Toronto Arenas  11     <NA> <NA>
+## 5 5 1917-12-26    Ottawa Senators  6 Montreal Wanderers   3     <NA> <NA>
+## 6 6 1917-12-26 Montreal Canadiens  5     Toronto Arenas   7     <NA> <NA>
+##   Notes
+## 1      
+## 2      
+## 3      
+## 4      
+## 5      
+## 6
 {% endhighlight %}
  
 Looking at the head of the data, we see there's some columns that need better names, and a deeper look at the data says that there are a few that likely can be dropped. There's a mix up in types too, Date should be dates, instead of factors, and some integer lines are as strings. 
@@ -111,7 +124,8 @@ tail(unique(allHockeyData$Visitor), 3)
 
 
 {% highlight text %}
-## NULL
+## [1] Czechoslovakia   Soviet All-Stars Finland         
+## 80 Levels: Montreal Canadiens Montreal Wanderers ... Finland
 {% endhighlight %}
  
 And, looking carfully, you'll find games cancelled or not yet played:
@@ -124,14 +138,27 @@ head(allHockeyData[is.na(allHockeyData$G.1), ])
 
 
 {% highlight text %}
-## Warning in is.na(allHockeyData$G.1): is.na() applied to non-(list or
-## vector) of type 'NULL'
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## NULL
+##         X       Date               Visitor  G                Home G.1  X.1
+## 53856 648 2014-01-07   Carolina Hurricanes NA      Buffalo Sabres  NA     
+## 53962 754 2014-01-21   Carolina Hurricanes NA Philadelphia Flyers  NA     
+## 53978 770 2014-01-24       Ottawa Senators NA Carolina Hurricanes  NA     
+## 54182 974 2014-03-10 Columbus Blue Jackets NA        Dallas Stars  NA     
+## 57176   1 2016-10-12       St. Louis Blues NA  Chicago Blackhawks  NA <NA>
+## 57177   2 2016-10-12        Calgary Flames NA     Edmonton Oilers  NA <NA>
+##       Att.  LOG
+## 53856 <NA> <NA>
+## 53962 <NA> <NA>
+## 53978 <NA> <NA>
+## 54182 <NA> <NA>
+## 57176 <NA> <NA>
+## 57177 <NA> <NA>
+##                                                              Notes
+## 53856                   Postponed due to blizzard until 2014-02-25
+## 53962                  Postponed due to snowstorm until 2014-01-22
+## 53978 Rescheduled to 2014-01-25 due to rescheduled 2014-01-22 game
+## 54182          Game postponed until 2014-04-09 (Medical Emergency)
+## 57176                                                         <NA>
+## 57177                                                         <NA>
 {% endhighlight %}
  
 There are some usages where explicit Winner or Loser columns are ideal, or a boolean 'Tie' flag. For both of these I'm thinking of the [`EloRating`](https://cran.r-project.org/web/packages/EloRating/index.html) package, which I'll talk about later.
@@ -250,7 +277,37 @@ cleanData <- cleanHockeyData(allHockeyData)
 
 
 {% highlight text %}
-## Error in subset.default(hockeyData, select = -LOG): argument "subset" is missing, with no default
+## Warning in cleanHockeyData(allHockeyData): NAs introduced by coercion
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## dropping international games
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## dropping unplayed games - future or past cancelled
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## special cases
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## reguar replacements
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## find winners and losers
 {% endhighlight %}
 
 
@@ -262,27 +319,34 @@ head(cleanData)
 
 
 {% highlight text %}
-## Error in head(cleanData): object 'cleanData' not found
+##         Date             Visitor VisitorGoals                Home
+## 1 1917-12-19 Toronto Maple Leafs            9  Montreal Wanderers
+## 2 1917-12-19  Montreal Canadiens            7    St. Louis Eagles
+## 3 1917-12-22  Montreal Canadiens           11  Montreal Wanderers
+## 4 1917-12-22    St. Louis Eagles            4 Toronto Maple Leafs
+## 5 1917-12-26    St. Louis Eagles            6  Montreal Wanderers
+## 6 1917-12-26  Montreal Canadiens            5 Toronto Maple Leafs
+##   HomeGoals OTStatus Att. Notes   Tie              Winner
+## 1        10            NA       FALSE  Montreal Wanderers
+## 2         4            NA       FALSE  Montreal Canadiens
+## 3         2            NA       FALSE  Montreal Canadiens
+## 4        11            NA       FALSE Toronto Maple Leafs
+## 5         3            NA       FALSE    St. Louis Eagles
+## 6         7            NA       FALSE Toronto Maple Leafs
+##                 Loser
+## 1 Toronto Maple Leafs
+## 2    St. Louis Eagles
+## 3  Montreal Wanderers
+## 4    St. Louis Eagles
+## 5  Montreal Wanderers
+## 6  Montreal Canadiens
 {% endhighlight %}
  
-We'll stash this cleaned data frame back in the `../_data/` folder, to make it easier to use in the future. 
+We'll stash this cleaned data frame back in the `./_data/` folder, to make it easier to use in the future. 
  
 
 {% highlight r %}
-saveRDS(cleanData, "../_data/hockeyData.Rds")
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Warning in gzfile(file, mode): cannot open compressed file '../_data/
-## hockeyData.Rds', probable reason 'No such file or directory'
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in gzfile(file, mode): cannot open the connection
+saveRDS(cleanData, "./_data/hockeyData.Rds")
 {% endhighlight %}
  
 We'll dig into this data at a later point.

@@ -20,7 +20,7 @@ Having downloaded data from Hockey-Reference.com in the [last post]({{ site.base
 
 We'll start with combining all the data to one frame. I'm using data from both the NHL and WHA, but fortunately, the data arrives quite uniform. We can actually just merge the data frames we get from `read.csv` together.
 
-Assuming the data is in the `../_data/` folder (that's where mine is), a short set of code will do it all. While there's lots of ways to do this, one that doesn't use any additional libraries is here:
+Assuming the data is in the `./_data/` folder (that's where mine is), a short set of code will do it all. While there's lots of ways to do this, one that doesn't use any additional libraries is here:
 
 ```{r filemerge}
 fileMerge<-function(pathToFiles="."){
@@ -30,7 +30,7 @@ fileMerge<-function(pathToFiles="."){
   return(unifiedData)
 }
 
-allHockeyData<-fileMerge("../_data/")
+allHockeyData<-fileMerge("./_data/")
 ```
 
 In this function, the files are discovered by the `list.files` call to the provided or default path. The files are read sequentially by `lapply` call on `read.csv`, producing a list of `data.frame`s The `do.call` function is a built-in that iterates through the provided list `d`, and applies `rbind` across each item, resulting in one `data.frame`.
@@ -209,10 +209,10 @@ cleanData<-cleanHockeyData(allHockeyData)
 head(cleanData)
 ```
 
-We'll stash this cleaned data frame back in the `../_data/` folder, to make it easier to use in the future. 
+We'll stash this cleaned data frame back in the `./_data/` folder, to make it easier to use in the future. 
 
 ```{r}
-saveRDS(cleanData, "../_data/hockeyData.Rds")
+saveRDS(cleanData, "./_data/hockeyData.Rds")
 ```
 
 We'll dig into this data at a later point.
