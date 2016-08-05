@@ -18,6 +18,8 @@ tags: R hockey cleaning exploratory Dixon-Coles
 *Note: This is earlier work I did (last winter/spring) so some info may seem dated at time of posting. I've used data files current to then.*
  
 [Last entry]({{ site.baseurl }}/blog/2016-08-04/data_preparation.html) we did some data importing and cleaning of historical NHL data, from 2005 to present. This was in anticipation of performing simulation of games, by the Dixon-Coles method. Much of this entry is not my original work, I've used slightly modified versions of the code available from Jonas at the [opisthokonta.com](http://opisthokonta.net/?p=890) [blog](http://opisthokonta.net/?p=913). I've mixed his [optimized Dixon-Coles method](http://opisthokonta.net/?p=939) and the [time regression method](http://opisthokonta.net/?p=1013) which was a key part of Dixon and Coles' paper.
+
+<!--more-->
  
 First, Dixon and Coles provide a method to increase the number of low-goal scoring games. A keen eye would notice that the goals scored is a bit biased 'left' compared to the actual Poisson curve:
  
