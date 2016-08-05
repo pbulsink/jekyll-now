@@ -18,8 +18,6 @@ tags: R hockey cleaning exploratory Dixon-Coles
 *Note: This is earlier work I did (last winter/spring) so some info may seem dated at time of posting. I've used data files current to then.*
  
 [Last entry]({{ site.baseurl }}/blog/2016-08-04/data_preparation.html) we did some data importing and cleaning of historical NHL data, from 2005 to present. This was in anticipation of performing simulation of games, by the Dixon-Coles method. Much of this entry is not my original work, I've used slightly modified versions of the code available from Jonas at the [opisthokonta.com](http://opisthokonta.net/?p=890) [blog](http://opisthokonta.net/?p=913). I've mixed his [optimized Dixon-Coles method](http://opisthokonta.net/?p=939) and the [time regression method](http://opisthokonta.net/?p=1013) which was a key part of Dixon and Coles' paper.
-
-<!--more-->
  
 First, Dixon and Coles provide a method to increase the number of low-goal scoring games. A keen eye would notice that the goals scored is a bit biased 'left' compared to the actual Poisson curve:
  
@@ -154,7 +152,7 @@ Use of this is to feed in the data into the `doDCPrediction` function, returning
  
 
  
-The full 10 seasons took 329 seconds, while even just one season took 71 seconds. We haven't even added in the promised time dependancy yet! WOW. Hopefully it's a good model.
+The full 10 seasons took 336 seconds, while even just one season took 70 seconds. We haven't even added in the promised time dependancy yet! WOW. Hopefully it's a good model.
  
 We'll plot the Attack and Defence parameters for each team to se if there's any correllation.
 ![plot of chunk attack_defence_corr_plot](/images/attack_defence_corr_plot-1.png)
@@ -283,7 +281,7 @@ Remaking those functions took a lot of space, but only a few lines changed. We m
  
 
  
-Running it again, we get 10 seasons taking 587 seconds, and one season 39 seconds. We could optimize that futher if we wanted (eg. drop data for weight of less than some amount), but fortunately we only have to run this once to start predicting all sorts of results.
+Running it again, we get 10 seasons taking 564 seconds, and one season 39 seconds. We could optimize that futher if we wanted (eg. drop data for weight of less than some amount), but fortunately we only have to run this once to start predicting all sorts of results.
  
 We'll plot the Attack and Defence parameters for each team to se if there's any correllation.
 ![plot of chunk xi_attack_defence_corr_plot](/images/xi_attack_defence_corr_plot-1.png)
@@ -296,38 +294,38 @@ kable(team_params)
 
 
 
-|Team                  |    Attack| Defence|
-|:---------------------|---------:|-------:|
-|Philadelphia Flyers   | 1.0121194|       0|
-|Vancouver Canucks     | 1.0392275|       0|
-|San Jose Sharks       | 1.0084094|       0|
-|Montreal Canadiens    | 0.9432757|       0|
-|Winnipeg Jets         | 1.1651391|       0|
-|Columbus Blue Jackets | 1.0720620|       0|
-|Chicago Blackhawks    | 0.9859894|       0|
-|Boston Bruins         | 0.9233369|       0|
-|Calgary Flames        | 1.0748234|       0|
-|Colorado Avalanche    | 1.0074923|       0|
-|Ottawa Senators       | 1.0758839|       0|
-|New Jersey Devils     | 0.7969081|       0|
-|Anaheim Ducks         | 1.0115607|       0|
-|New York Rangers      | 1.1065298|       0|
-|Florida Panthers      | 0.9198597|       0|
-|New York Islanders    | 1.1370036|       0|
-|Los Angeles Kings     | 0.9782324|       0|
-|Washington Capitals   | 1.0887270|       0|
-|Buffalo Sabres        | 0.7179103|       0|
-|Minnesota Wild        | 1.0152058|       0|
-|Dallas Stars          | 1.2076288|       0|
-|Carolina Hurricanes   | 0.8435388|       0|
-|Pittsburgh Penguins   | 0.9745149|       0|
-|Edmonton Oilers       | 0.9324842|       0|
-|Toronto Maple Leafs   | 1.0059094|       0|
-|St. Louis Blues       | 1.0860585|       0|
-|Detroit Red Wings     | 1.0583062|       0|
-|Nashville Predators   | 1.0038109|       0|
-|Tampa Bay Lightning   | 1.1583167|       0|
-|Arizona Coyotes       | 0.7776899|       0|
+|Team                  |    Attack|    Defence|
+|:---------------------|---------:|----------:|
+|Philadelphia Flyers   | 1.0121194| -0.2100311|
+|Vancouver Canucks     | 1.0392275| -0.2165386|
+|San Jose Sharks       | 1.0084094| -0.2313078|
+|Montreal Canadiens    | 0.9432757| -0.4092650|
+|Winnipeg Jets         | 1.1651391| -0.3067774|
+|Columbus Blue Jackets | 1.0720620| -0.0930428|
+|Chicago Blackhawks    | 0.9859894| -0.3999099|
+|Boston Bruins         | 0.9233369| -0.3308583|
+|Calgary Flames        | 1.0748234| -0.2527661|
+|Colorado Avalanche    | 1.0074923| -0.2423507|
+|Ottawa Senators       | 1.0758839| -0.2676480|
+|New Jersey Devils     | 0.7969081| -0.3597987|
+|Anaheim Ducks         | 1.0115607| -0.1684771|
+|New York Rangers      | 1.1065298| -0.3468837|
+|Florida Panthers      | 0.9198597| -0.2591662|
+|New York Islanders    | 1.1370036| -0.1595641|
+|Los Angeles Kings     | 0.9782324| -0.3529102|
+|Washington Capitals   | 1.0887270| -0.3249934|
+|Buffalo Sabres        | 0.7179103| -0.0802519|
+|Minnesota Wild        | 1.0152058| -0.3469008|
+|Dallas Stars          | 1.2076288| -0.0965829|
+|Carolina Hurricanes   | 0.8435388| -0.2891418|
+|Pittsburgh Penguins   | 0.9745149| -0.3085952|
+|Edmonton Oilers       | 0.9324842| -0.0290418|
+|Toronto Maple Leafs   | 1.0059094| -0.0907913|
+|St. Louis Blues       | 1.0860585| -0.3104953|
+|Detroit Red Wings     | 1.0583062| -0.2322874|
+|Nashville Predators   | 1.0038109| -0.3102897|
+|Tampa Bay Lightning   | 1.1583167| -0.2404457|
+|Arizona Coyotes       | 0.7776899| -0.0850163|
  
 There's another way of generating the teams strengths, and this is wicked fast. Again, this is based on opisthokonta and from Martin Eastwood and the [pena.lt/y](pena.lt/y blog) blog. This method is slightly lsess accurate, and doesn't do time dependance (yet) but is fast enough and simple enough to cut it. 
  
@@ -385,4 +383,4 @@ resAll <- doFastDC(mAll, nhl_all)
 tFast <- proc.time() - t
 {% endhighlight %}
  
-So, for all the data, that provides us with a fitting in 7 seconds, compared to 587 seconds for the above method. We'll continue to use this method for speed in later work as we predict results for some games!
+So, for all the data, that provides us with a fitting in 6 seconds, compared to 564 seconds for the above method. We'll continue to use this method for speed in later work as we predict results for some games!

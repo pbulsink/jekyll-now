@@ -239,18 +239,21 @@ The full 10 seasons took `r as.integer(t_all_calc[3])` seconds, while even just 
 We'll plot the Attack and Defence parameters for each team to se if there's any correllation.
 ```{r attack_defence_corr_plot, echo=FALSE}
 library(ggplot2)
+library(ggrepel)
 team_params<-data.frame("Team"=unique(nhl2015$AwayTeam), "Attack"=0, "Defence"=0)
 for (t in 1:length(as.character(unique(nhl2015$AwayTeam)))){
      team<-as.character(unique(nhl2015$AwayTeam))[t]
      team_params[team_params$Team == team,]$Attack=nhl.one.res$par[paste("Attack", team, sep=".")]
-     team_params[team_params$Team == team,]$Defend=nhl.one.res$par[paste("Defence", team, sep=".")]
+     team_params[team_params$Team == team,]$Defence=nhl.one.res$par[paste("Defence", team, sep=".")]
 }
 
-ggplot(team_params, aes(x=Attack, y=Defence, color=Team)) +
+ggplot(team_params, aes(x=Attack, y=Defence, color=Team, label=Team)) +
     ggtitle("Attack vs Defence Parameters") +
-    xlab("Defence") + 
-    ylab("Attack") +
-    geom_point()
+    xlab("Attack") + 
+    ylab("Defence") +
+    geom_point() +
+    geom_text_repel(force=2, max.iter=5000) +
+    theme(legend.position="none")
 ```
 The effect that time dependance has on the Poisson determination is weighting more recent games higher than older results. There are a few reasons why this matters, including the effect of short term hot and cold streaks, but also to account for how teams change over time (player quality changes due to age, players added and removed by trades, drafts, or retirement; changes in coaches or coaching style, etc). To add this to our method from above, we need to start with adding a weighting function based on $\xi$ (xi):
 
@@ -399,18 +402,21 @@ Running it again, we get 10 seasons taking `r as.integer(t_all_calc[3])` seconds
 We'll plot the Attack and Defence parameters for each team to se if there's any correllation.
 ```{r xi_attack_defence_corr_plot, echo=FALSE}
 library(ggplot2)
+library(ggrepel)
 team_params<-data.frame("Team"=unique(nhl2015$AwayTeam), "Attack"=0, "Defence"=0)
 for (t in 1:length(as.character(unique(nhl2015$AwayTeam)))){
      team<-as.character(unique(nhl2015$AwayTeam))[t]
      team_params[team_params$Team == team,]$Attack=nhl.one.res$par[paste("Attack", team, sep=".")]
-     team_params[team_params$Team == team,]$Defend=nhl.one.res$par[paste("Defence", team, sep=".")]
+     team_params[team_params$Team == team,]$Defence=nhl.one.res$par[paste("Defence", team, sep=".")]
 }
 
-ggplot(team_params, aes(x=Attack, y=Defence, color=Team)) +
+ggplot(team_params, aes(x=Attack, y=Defence, color=Team, label=Team)) +
     ggtitle("Attack vs Defence Parameters") +
-    xlab("Defence") + 
-    ylab("Attack") +
-    geom_point()
+    xlab("Attack") + 
+    ylab("Defence") +
+    geom_point() +
+    geom_text_repel(force=2, max.iter=5000) +
+    theme(legend.position="none")
 ```
 
 ```{r}
