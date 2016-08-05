@@ -1,7 +1,7 @@
 ---
 title: "NHL Data Preparation"
 author: "Philip Bulsink"
-date: "March 16, 2016"
+date: "August 04, 2016"
 output: html_document
 status: publish
 published: true
