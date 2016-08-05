@@ -7,11 +7,11 @@ status: publish
 published: true
 layout: post
 excerpt_separator: <!--more-->
-tags: R hockey cleaning exploratory
+tags: R hockey cleaning exploratory Dixon-Coles
 ---
 
  
-*Note: This is earlier work I did (last winter/spring) so some info may seem dated at time of posting*
+*Note: This is earlier work I did (last winter/spring) so some info may seem dated at time of posting. I've used data files current to then.*
  
 Much work has been done on predicting winners of sports or games. Many different tools exist, including some that attempt to predict the score of games. Some are specific to a sport, such as the [WASP tool for cricket](https://en.wikipedia.org/wiki/WASP_(cricket_calculation_tool)), while others are simple and useful everywhere, like [the log5 technique](https://en.wikipedia.org/wiki/Log5). Some use advanced individual statistics to sum up probabilities ([see this pdf](http://statistics.ucla.edu/system/resources/BAhbBlsHOgZmSSJPMjAxMi8wNS8xNC8xNV8xM18xOF8zNTBfQV9QbGF5ZXJfQmFzZWRfQXBwcm9hY2hfdG9fQmFzZWJhbGxfU2ltdWxhdGlvbi5wZGYGOgZFVA/A%20Player%20Based%20Approach%20to%20Baseball%20Simulation.pdf)), and others use various statistical tools, such as Bayesian analysis.
  
@@ -79,6 +79,17 @@ So we see that we have 0.001626 percent of our games go to overtime or shootout 
 {% highlight r %}
 library(ggplot2)
 library(cowplot)
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Error in library(cowplot): there is no package called 'cowplot'
+{% endhighlight %}
+
+
+
+{% highlight r %}
 plot_AG <- ggplot(nhl2015, aes(AG)) + ggtitle("Away Goals") + xlab("Goals") + 
     scale_x_continuous(breaks = seq(0, 10, 2)) + geom_bar(width = 0.8)
 
@@ -91,7 +102,11 @@ plot_diff <- ggplot(nhl2015, aes(AG - HG)) + ggtitle("Goal Difference (+ve is Aw
 plot_grid(plot_AG, plot_HG, plot_diff, align = "h", nrow = 1, ncol = 3)
 {% endhighlight %}
 
-![plot of chunk goal_plots](/images/goal_plots-1.png)
+
+
+{% highlight text %}
+## Error in eval(expr, envir, enclos): could not find function "plot_grid"
+{% endhighlight %}
  
 Both home and away goals look Poisson! Here's what a Poisson curve looks for a similar set of random numbers with the same characteristics:
 ![plot of chunk predicted_goals_plot](/images/predicted_goals_plot-1.png)
@@ -189,7 +204,7 @@ str(all_nhl)
 
 
 {% highlight text %}
-## 'data.frame':	13020 obs. of  7 variables:
+## 'data.frame':	12865 obs. of  7 variables:
 ##  $ Date    : Date, format: "2005-10-05" "2005-10-05" ...
 ##  $ AwayTeam: Factor w/ 30 levels "Boston Bruins",..: 14 17 28 12 23 6 29 3 21 22 ...
 ##  $ AG      : num  1 4 4 4 1 3 0 3 1 2 ...
@@ -200,6 +215,9 @@ str(all_nhl)
 {% endhighlight %}
  
 And the goals chart (again):
-![plot of chunk all_goals_plot](/images/all_goals_plot-1.png)
+
+{% highlight text %}
+## Error in eval(expr, envir, enclos): could not find function "plot_grid"
+{% endhighlight %}
  
 Next time we'll start actually modelling goals scored with Dixon-Coles.
