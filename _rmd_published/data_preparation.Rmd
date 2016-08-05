@@ -4,7 +4,7 @@ author: "Philip Bulsink"
 date: "March 16, 2016"
 output: html_document
 status: process
-published: false
+published: true
 layout: post
 excerpt_separator: <!--more-->
 tags: R hockey cleaning exploratory
