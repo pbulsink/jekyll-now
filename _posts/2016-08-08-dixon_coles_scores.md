@@ -95,11 +95,11 @@ probs_all_time <- predictResult(time_res_all, home, away)
  
 Now we can look at one of the results (say, 2015 not time weighted) and see the probability of a home win (Montreal), draw, or away win (Toronto): 0.3136673, 0.4414421, 0.2448906. In fact, we can plot the probabilities for the four fits we have, to show the effect of each fit type.
  
-![plot of chunk hda_mtl_plot](/Figs/hda_mtl_plot-1.png)
+![plot of chunk hda_mtl_plot](/images/hda_mtl_plot-1.png)
  
 While the odds of a draw haven't changed much, the odds of a Montreal or Toronto win have slightly. Note that over the past 10 years, Montreal has performed better, on average, than Toronto, so this is expected. As well, Monteal benefits from the home ice advantage. We can calculate this for a Toronto home game too.
  
-![plot of chunk hda_tor_plot](/Figs/hda_tor_plot-1.png)
+![plot of chunk hda_tor_plot](/images/hda_tor_plot-1.png)
  
 Why the difference in these two results? That's because the home advantage factor ranges not insignificantly. While not a huge range, it does impact the probabilities enough to make a noticeable difference.
  
@@ -252,13 +252,13 @@ makeStatsTable <- function(df) {
     tmpTable$HomeSOW = as.numeric(table(df$HomeTeam[(df$OT.Win == "H") & (df$OT.SO == 
         "SO")]))
     
-    tmpTable$AwayOTW = as.numeric(table(df$AwayTeam[(df$OT.Win == "V") & (df$OT.SO == 
+    tmpTable$AwayOTW = as.numeric(table(df$AwayTeam[(df$OT.Win == "A") & (df$OT.SO == 
         "OT")]))
-    tmpTable$AwaySOW = as.numeric(table(df$AwayTeam[(df$OT.Win == "V") & (df$OT.SO == 
+    tmpTable$AwaySOW = as.numeric(table(df$AwayTeam[(df$OT.Win == "A") & (df$OT.SO == 
         "SO")]))
     
     # OT Losses
-    tmpTable$HomeOTL = as.numeric(table(df$HomeTeam[(df$OT.Win == "V")]))
+    tmpTable$HomeOTL = as.numeric(table(df$HomeTeam[(df$OT.Win == "A")]))
     tmpTable$AwayOTL = as.numeric(table(df$AwayTeam[(df$OT.Win == "H")]))
     
     # W/L/OTL/ROW
@@ -309,36 +309,36 @@ We use it by calling `makeStatsTable` with the input being the season data.
 
 |Team                  | GP|  W| OTL|  L| ROW|   P|  GF|  GA| DIFF|        PP| OT.Win.Percent|
 |:---------------------|--:|--:|---:|--:|---:|---:|---:|---:|----:|---------:|--------------:|
-|Tampa Bay Lightning   | 82| 47|   7| 24|  45| 101| 259| 210|   49| 1.2317073|      0.2222222|
-|New York Rangers      | 82| 49|   2| 22|  47| 100| 248| 187|   61| 1.2195122|      0.6000000|
-|Anaheim Ducks         | 82| 45|   4| 24|  40|  94| 230| 223|    7| 1.1463415|      0.5555556|
-|Montreal Canadiens    | 82| 44|   4| 22|  43|  92| 215| 183|   32| 1.1219512|      0.4666667|
-|Vancouver Canucks     | 82| 44|   3| 29|  41|  91| 238| 220|   18| 1.1097561|      0.5714286|
-|St. Louis Blues       | 82| 43|   5| 24|  39|  91| 240| 199|   41| 1.1097561|      0.3750000|
-|Nashville Predators   | 82| 42|   6| 25|  38|  90| 227| 204|   23| 1.0975610|      0.4285714|
-|Los Angeles Kings     | 82| 40|   8| 27|  38|  88| 220| 198|   22| 1.0731707|      0.1578947|
-|Chicago Blackhawks    | 82| 43|   1| 28|  38|  87| 224| 184|   40| 1.0609756|      0.7777778|
-|Washington Capitals   | 82| 40|   6| 26|  37|  86| 237| 198|   39| 1.0487805|      0.2941176|
-|New York Islanders    | 82| 40|   5| 28|  37|  85| 245| 228|   17| 1.0365854|      0.3750000|
-|Minnesota Wild        | 82| 41|   2| 28|  39|  84| 226| 195|   31| 1.0243902|      0.4285714|
-|Winnipeg Jets         | 82| 38|   8| 26|  35|  84| 225| 205|   20| 1.0243902|      0.2727273|
-|Pittsburgh Penguins   | 82| 37|   8| 27|  35|  82| 215| 206|    9| 1.0000000|      0.2000000|
-|Ottawa Senators       | 82| 36|   8| 26|  34|  80| 231| 210|   21| 0.9756098|      0.2727273|
-|Detroit Red Wings     | 82| 37|   5| 25|  36|  79| 229| 212|   17| 0.9634146|      0.3333333|
-|Colorado Avalanche    | 82| 34|   9| 31|  28|  77| 214| 224|  -10| 0.9390244|      0.2800000|
-|Calgary Flames        | 82| 37|   2| 30|  35|  76| 233| 211|   22| 0.9268293|      0.5555556|
-|San Jose Sharks       | 82| 36|   4| 33|  35|  76| 224| 227|   -3| 0.9268293|      0.2000000|
-|Boston Bruins         | 82| 34|   7| 27|  32|  75| 206| 204|    2| 0.9146341|      0.3000000|
-|Florida Panthers      | 82| 33|   8| 29|  29|  74| 201| 216|  -15| 0.9024390|      0.2000000|
-|Columbus Blue Jackets | 82| 35|   3| 35|  31|  73| 229| 248|  -19| 0.8902439|      0.5384615|
-|Philadelphia Flyers   | 82| 31|  11| 31|  28|  73| 213| 227|  -14| 0.8902439|      0.2142857|
-|Dallas Stars          | 82| 34|   2| 31|  34|  70| 254| 252|    2| 0.8536585|      0.2000000|
-|New Jersey Devils     | 82| 31|   6| 36|  26|  68| 180| 208|  -28| 0.8292683|      0.2941176|
-|Toronto Maple Leafs   | 82| 28|   6| 44|  25|  62| 209| 260|  -51| 0.7560976|      0.3333333|
-|Carolina Hurricanes   | 82| 28|   4| 41|  25|  60| 186| 219|  -33| 0.7317073|      0.3333333|
-|Edmonton Oilers       | 82| 20|  11| 44|  18|  51| 194| 280|  -86| 0.6219512|      0.1200000|
-|Arizona Coyotes       | 82| 19|   3| 50|  17|  41| 165| 267| -102| 0.5000000|      0.4545455|
-|Buffalo Sabres        | 82| 19|   3| 51|  15|  41| 157| 269| -112| 0.5000000|      0.4545455|
+|New York Rangers      | 82| 53|   7| 22|  49| 113| 252| 192|   60| 1.3780488|      0.5882353|
+|Montreal Canadiens    | 82| 50|  10| 22|  43| 110| 221| 189|   32| 1.3414634|      0.6190476|
+|Anaheim Ducks         | 82| 51|   7| 24|  43| 109| 236| 226|   10| 1.3292683|      0.6666667|
+|St. Louis Blues       | 82| 51|   7| 24|  42| 109| 248| 201|   47| 1.3292683|      0.6666667|
+|Tampa Bay Lightning   | 82| 50|   8| 24|  47| 108| 262| 211|   51| 1.3170732|      0.3333333|
+|Nashville Predators   | 82| 47|  10| 25|  41| 104| 232| 208|   24| 1.2682927|      0.5000000|
+|Chicago Blackhawks    | 82| 48|   6| 28|  39| 102| 229| 189|   40| 1.2439024|      0.8000000|
+|Vancouver Canucks     | 82| 48|   5| 29|  42| 101| 242| 222|   20| 1.2317073|      0.7058824|
+|Washington Capitals   | 82| 45|  11| 26|  40| 101| 242| 203|   39| 1.2317073|      0.4000000|
+|New York Islanders    | 82| 47|   7| 28|  40| 101| 252| 230|   22| 1.2317073|      0.6190476|
+|Minnesota Wild        | 82| 46|   8| 28|  42| 100| 231| 201|   30| 1.2195122|      0.5000000|
+|Detroit Red Wings     | 82| 43|  14| 25|  39| 100| 235| 221|   14| 1.2195122|      0.4074074|
+|Ottawa Senators       | 82| 43|  13| 26|  37|  99| 238| 215|   23| 1.2073171|      0.4333333|
+|Winnipeg Jets         | 82| 43|  13| 26|  36|  99| 230| 210|   20| 1.2073171|      0.3928571|
+|Pittsburgh Penguins   | 82| 43|  12| 27|  39|  98| 221| 210|   11| 1.1951220|      0.3571429|
+|Calgary Flames        | 82| 45|   7| 30|  41|  97| 241| 216|   25| 1.1829268|      0.6500000|
+|Boston Bruins         | 82| 41|  14| 27|  37|  96| 213| 211|    2| 1.1707317|      0.4062500|
+|Los Angeles Kings     | 82| 40|  15| 27|  38|  95| 220| 205|   15| 1.1585366|      0.1153846|
+|Dallas Stars          | 82| 41|  10| 31|  37|  92| 261| 260|    1| 1.1219512|      0.5000000|
+|Florida Panthers      | 82| 38|  15| 29|  30|  91| 206| 223|  -17| 1.1097561|      0.3214286|
+|Colorado Avalanche    | 82| 39|  12| 31|  29|  90| 219| 227|   -8| 1.0975610|      0.4137931|
+|San Jose Sharks       | 82| 40|   9| 33|  36|  89| 228| 232|   -4| 1.0853659|      0.3750000|
+|Columbus Blue Jackets | 82| 42|   5| 35|  33|  89| 236| 250|  -14| 1.0853659|      0.8235294|
+|Philadelphia Flyers   | 82| 33|  18| 31|  30|  84| 215| 234|  -19| 1.0243902|      0.2162162|
+|New Jersey Devils     | 82| 32|  14| 36|  27|  78| 181| 216|  -35| 0.9512195|      0.2307692|
+|Carolina Hurricanes   | 82| 30|  11| 41|  25|  71| 188| 226|  -38| 0.8658537|      0.3157895|
+|Toronto Maple Leafs   | 82| 30|   8| 44|  25|  68| 211| 262|  -51| 0.8292683|      0.4000000|
+|Edmonton Oilers       | 82| 24|  14| 44|  19|  62| 198| 283|  -85| 0.7560976|      0.2413793|
+|Arizona Coyotes       | 82| 24|   8| 50|  19|  56| 170| 272| -102| 0.6829268|      0.5555556|
+|Buffalo Sabres        | 82| 23|   8| 51|  15|  54| 161| 274| -113| 0.6585366|      0.5625000|
  
 We'll feed it into a log5 function, and use that instead of a factor of 0.5 to determine OT winners. As well, it's trivial to determine that on average, the number of games ending in shootout is slightly higher than the number ending in overtime.
  
