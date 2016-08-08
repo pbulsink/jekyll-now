@@ -9,21 +9,19 @@ layout: post
 excerpt_separator: <!--more-->
 tags: R hockey cleaning exploratory Dixon-Coles
 ---
----
  
 
- 
-
- 
 *Note: This is earlier work I did (last winter/spring) so some info may seem dated at time of posting. I've used data files current to then.*
  
 [Last entry]({{ site.baseurl }}/blog/2016-08-04/data_preparation.html) we did some data importing and cleaning of historical NHL data, from 2005 to present. This was in anticipation of performing simulation of games, by the Dixon-Coles method. Much of this entry is not my original work, I've used slightly modified versions of the code available from Jonas at the [opisthokonta.com](http://opisthokonta.net/?p=890) [blog](http://opisthokonta.net/?p=913). I've mixed his [optimized Dixon-Coles method](http://opisthokonta.net/?p=939) and the [time regression method](http://opisthokonta.net/?p=1013) which was a key part of Dixon and Coles' paper.
+ 
+<!--more-->
  
 First, Dixon and Coles provide a method to increase the number of low-goal scoring games. A keen eye would notice that the goals scored is a bit biased 'left' compared to the actual Poisson curve:
  
 ![plot of chunk goals_vs_poisson_plot](/images/goals_vs_poisson_plot-1.png)
  
-The Dixon-Coles method for adjusting for low scoring games is the tau ($\tau$) function, which we'll use in a bit.
+The Dixon-Coles method for adjusting for low scoring games is the tau (&tau;) function, which we'll use in a bit.
 
 {% highlight r %}
 tau <- Vectorize(function(y1, y2, lambda, mu, rho) {
@@ -152,11 +150,11 @@ Use of this is to feed in the data into the `doDCPrediction` function, returning
  
 
  
-The full 10 seasons took 325 seconds, while even just one season took 78 seconds. We haven't even added in the promised time dependancy yet! WOW. Hopefully it's a good model.
+The full 10 seasons took 324 seconds, while even just one season took 77 seconds. We haven't even added in the promised time dependancy yet! WOW. Hopefully it's a good model.
  
 We'll plot the Attack and Defence parameters for each team to se if there's any correllation.
 ![plot of chunk attack_defence_corr_plot](/images/attack_defence_corr_plot-1.png)
-The effect that time dependance has on the Poisson determination is weighting more recent games higher than older results. There are a few reasons why this matters, including the effect of short term hot and cold streaks, but also to account for how teams change over time (player quality changes due to age, players added and removed by trades, drafts, or retirement; changes in coaches or coaching style, etc). To add this to our method from above, we need to start with adding a weighting function based on $\xi$ (xi):
+The effect that time dependance has on the Poisson determination is weighting more recent games higher than older results. There are a few reasons why this matters, including the effect of short term hot and cold streaks, but also to account for how teams change over time (player quality changes due to age, players added and removed by trades, drafts, or retirement; changes in coaches or coaching style, etc). To add this to our method from above, we need to start with adding a weighting function based on &xi; (xi):
  
 
 {% highlight r %}
@@ -169,13 +167,13 @@ DCweights <- function(dates, currentDate = Sys.Date(), xi = 0) {
 }
 {% endhighlight %}
  
-We can see the effect this has by throwing the list of dates from our scores into the function, with different values of $\xi$.
+We can see the effect this has by throwing the list of dates from our scores into the function, with different values of &xi;.
  
 ![plot of chunk xi_plot](/images/xi_plot-1.png)
  
 This graph shows the weight (0 to 1) of a game on a certain date. The lower the weight, the less it impacts the model's optimization. The graph is choppy, because weights are given for games, there's no games played in summer, and in 2012 there was a lockout (note the exta large gap). 
  
-While it might make sense to use a $\xi$ value of 0.005 (focusing mostly on this season, somewhat on the last, but not much on seasons before that), evaulation of the performance of the model at each $\xi$ value would be the best determiner of what to use. Again, we'll look at that later.
+While it might make sense to use a &xi; value of 0.005 (focusing mostly on this season, somewhat on the last, but not much on seasons before that), evaulation of the performance of the model at each &xi; value would be the best determiner of what to use. Again, we'll look at that later.
  
 With the weighting function available, we'll modify the rest of the functions to use the weights:
  
@@ -248,7 +246,8 @@ doDCPrediction_w <- function(df, xi = 0) {
     names(par.inits) <- c("HOME", "RHO", paste("Attack", dcm$teams[1:(nteams - 
         1)], sep = "."), paste("Defence", dcm$teams, sep = "."))
     
-    res <- optim(par = par.inits, fn = DCoptimFn_w, DCm = dcm, xi = xi, method = "BFGS")
+    res <- optim(par = par.inits, fn = DCoptimFn_w, DCm = dcm, xi = xi, method = "Nelder-Mead", 
+        hessian = FALSE)
     
     parameters <- res$par
     
@@ -278,7 +277,7 @@ Remaking those functions took a lot of space, but only a few lines changed. We m
  
 
  
-Running it again, we get 10 seasons taking 821 seconds, and one season 48 seconds. We could optimize that futher if we wanted (eg. drop data for weight of less than some amount), but fortunately we only have to run this once to start predicting all sorts of results.
+Running it again, we get 10 seasons taking 73 seconds, and one season 7 seconds. We could optimize that futher if we wanted (eg. drop data for weight of less than some amount), but fortunately we only have to run this once to start predicting all sorts of results.
  
 We'll plot the Attack and Defence parameters for each team to se if there's any correllation.
 ![plot of chunk xi_attack_defence_corr_plot](/images/xi_attack_defence_corr_plot-1.png)
@@ -380,4 +379,4 @@ resAll <- doFastDC(mAll, nhl_all)
 tFast <- proc.time() - t
 {% endhighlight %}
  
-So, for all the data, that provides us with a fitting in 5 seconds, compared to 821 seconds for the above method. We'll continue to use this method for speed in later work as we predict results for some games!
+So, for all the data, that provides us with a fitting in 5 seconds, compared to 73 seconds for the above method. We'll continue to use this method for speed in later work as we predict results for some games!

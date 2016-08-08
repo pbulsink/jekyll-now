@@ -11,9 +11,6 @@ tags: R hockey cleaning predicting Dixon-Coles
 ---
 
 
-{% highlight text %}
-## Error in optim(par = par.inits, fn = DCoptimFn, DCm = dcm, xi = xi, method = "BFGS"): non-finite finite-difference value [2]
-{% endhighlight %}
  
 *Note: This is earlier work I did (last winter/spring) so some info may seem dated at time of posting. I've used data files current to then.*
  
@@ -23,7 +20,7 @@ In [section 1]({{ site.baseurl }}/blog/2016-08-04/data_preparation.html), we pre
  
 Poisson analysis is good at predicting, based on an average, the proportion of each integer events happening. So, if we expect 3.1 goals to be scored by a certain team as an average, we know that the proportion of that is going to be (in R code) `dpois(3,3.1)`, equalling 0.2236768. Similarly, the chance that 1 and 2 goals is scored by that team to be `dpois(c(1,2), 3.1)` to be 0.1396525 and 0.2164614 respectively. 
  
-The Dixon-Coles optimization gave us 'attack' and 'defence' parameters, along with a home field advantage factor `home` and a fudge fator for low-scoring games, 'rho' ($\rho$). For two teams, Home and Away, we can calculate their expected goals socred by adding their attack, plus the opposing teams' defence, plus (for home) the home field advantage. This will give us a 'lambda' ($\lambda$) and 'mu' ($\mu$) which are the home and away goals expected. For example, let's use Toronto Maple Leafs vs. Montreal Canadiens:
+The Dixon-Coles optimization gave us 'attack' and 'defence' parameters, along with a home field advantage factor `home` and a fudge fator for low-scoring games, 'rho' (&rho;). For two teams, Home and Away, we can calculate their expected goals socred by adding their attack, plus the opposing teams' defence, plus (for home) the home field advantage. This will give us a 'lambda' (&lambda;) and 'mu' (&mu;) which are the home and away goals expected. For example, let's use Toronto Maple Leafs vs. Montreal Canadiens:
  
 
 {% highlight r %}
@@ -31,9 +28,9 @@ home <- "Montreal Canadiens"
 away <- "Toronto Maple Leafs"
 {% endhighlight %}
  
-Montreal is a stronger team this year, we expect a higher attack and lower defence factor. For the 2015 season only, they are, in fact, 0.9780729 and -0.2676516. Similarly, Toronto's factors are 0.9656608 and 0.0833694 respectively. 
+Montreal is a stronger team this year, we expect a higher attack and lower defence factor. For the 2015 season only, they are, in fact, 1.0892421 and -1.8038952. Similarly, Toronto's factors are 1.087436 and -1.7822052 respectively. 
  
-We'll do the addition to get $\lambda$ and $\mu$:
+We'll do the addition to get &lambda; and &mu;:
 
 {% highlight r %}
 # Expected goals home
@@ -43,24 +40,24 @@ lambda <- exp(res_2015$par["HOME"] + res_2015$par["Attack.Montreal Canadiens"] +
 mu <- exp(res_2015$par["Attack.Toronto Maple Leafs"] + res_2015$par["Defence.Montreal Canadiens"])
 {% endhighlight %}
  
-Thus, we expect Montreal to score 3.1555739 goals and Toronto to score 2.0097478 goals. 
+Thus, we expect Montreal to score 0.5932014 goals and Toronto to score 0.4884788 goals. 
  
-Using this knowledge, we can create a probability matrix of Home and Away goals' Poisson probability. Using $\lambda$ and $\mu$, `probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))`, and a maximum number of goals per team of 8:
+Using this knowledge, we can create a probability matrix of Home and Away goals' Poisson probability. Using &lambda; and &mu;, `probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))`, and a maximum number of goals per team of 8:
  
 
-|   |        0|        1|        2|        3|        4|        5|        6|        7|        8|
-|:--|--------:|--------:|--------:|--------:|--------:|--------:|--------:|--------:|--------:|
-|0  | 0.005711| 0.011478| 0.011534| 0.007727| 0.003882| 0.001560| 0.000523| 0.000150| 0.000038|
-|1  | 0.018022| 0.036220| 0.036397| 0.024383| 0.012251| 0.004924| 0.001649| 0.000474| 0.000119|
-|2  | 0.028435| 0.057148| 0.057426| 0.038471| 0.019329| 0.007769| 0.002602| 0.000747| 0.000188|
-|3  | 0.029910| 0.060111| 0.060404| 0.040466| 0.020331| 0.008172| 0.002737| 0.000786| 0.000197|
-|4  | 0.023596| 0.047421| 0.047652| 0.031923| 0.016039| 0.006447| 0.002159| 0.000620| 0.000156|
-|5  | 0.014892| 0.029928| 0.030074| 0.020147| 0.010123| 0.004069| 0.001363| 0.000391| 0.000098|
-|6  | 0.007832| 0.015740| 0.015817| 0.010596| 0.005324| 0.002140| 0.000717| 0.000206| 0.000052|
-|7  | 0.003531| 0.007096| 0.007130| 0.004777| 0.002400| 0.000965| 0.000323| 0.000093| 0.000023|
-|8  | 0.001393| 0.002799| 0.002812| 0.001884| 0.000947| 0.000381| 0.000127| 0.000037| 0.000009|
+|   |        0|        1|        2|        3|        4|       5|     6|  7|  8|
+|:--|--------:|--------:|--------:|--------:|--------:|-------:|-----:|--:|--:|
+|0  | 0.339025| 0.165607| 0.040448| 0.006586| 0.000804| 7.9e-05| 6e-06|  0|  0|
+|1  | 0.201110| 0.098238| 0.023994| 0.003907| 0.000477| 4.7e-05| 4e-06|  0|  0|
+|2  | 0.059649| 0.029138| 0.007117| 0.001159| 0.000142| 1.4e-05| 1e-06|  0|  0|
+|3  | 0.011795| 0.005761| 0.001407| 0.000229| 0.000028| 3.0e-06| 0e+00|  0|  0|
+|4  | 0.001749| 0.000854| 0.000209| 0.000034| 0.000004| 0.0e+00| 0e+00|  0|  0|
+|5  | 0.000208| 0.000101| 0.000025| 0.000004| 0.000000| 0.0e+00| 0e+00|  0|  0|
+|6  | 0.000021| 0.000010| 0.000002| 0.000000| 0.000000| 0.0e+00| 0e+00|  0|  0|
+|7  | 0.000002| 0.000001| 0.000000| 0.000000| 0.000000| 0.0e+00| 0e+00|  0|  0|
+|8  | 0.000000| 0.000000| 0.000000| 0.000000| 0.000000| 0.0e+00| 0e+00|  0|  0|
  
-This has the away score on the top (as columns), and the home score along the side (as rows). Recall that we need to apply the $\tau$ function to this matrix, to account for low scoring games. Once that is done, we can sum the diagonal of the matrix to find the probability of a tie. The sum of the upper triangle is the probability of an away win, and the sum of the lower triangle is the home win.
+This has the away score on the top (as columns), and the home score along the side (as rows). Recall that we need to apply the &tau; function to this matrix, to account for low scoring games. Once that is done, we can sum the diagonal of the matrix to find the probability of a tie. The sum of the upper triangle is the probability of an away win, and the sum of the lower triangle is the home win.
  
 Putting it all together we get this function:
  
@@ -92,82 +89,17 @@ predictResult <- function(res, home, away, maxgoal = 8) {
 
 probs_2015 <- predictResult(res_2015, home, away)
 probs_all <- predictResult(res_all, home, away)
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in predictResult(res_all, home, away): object 'res_all' not found
-{% endhighlight %}
-
-
-
-{% highlight r %}
 probs_2015_time <- predictResult(time_res_2015, home, away)
 probs_all_time <- predictResult(time_res_all, home, away)
 {% endhighlight %}
  
-Now we can look at one of the results (say, 2015 not time weighted) and see the probability of a home win (Montreal), draw, or away win (Toronto): 0.5974644, 0.1734899, 0.2235644. In fact, we can plot the probabilities for the four fits we have, to show the effect of each fit type.
+Now we can look at one of the results (say, 2015 not time weighted) and see the probability of a home win (Montreal), draw, or away win (Toronto): 0.3136673, 0.4414421, 0.2448906. In fact, we can plot the probabilities for the four fits we have, to show the effect of each fit type.
  
-
-{% highlight text %}
-## Error in rbind(probs_2015, probs_2015_time, probs_all, probs_all_time): object 'probs_all' not found
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in colnames(probs_df) <- c("Montreal Win", "Draw", "Toronto Win"): object 'probs_df' not found
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in probs_df$Sim.Type <- c("2015 Season", "2015 Season Time Weighted", : object 'probs_df' not found
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in melt(probs_df, id.vars = "Sim.Type"): object 'probs_df' not found
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in ggplot(pmelt, aes(y = value, x = variable, fill = Sim.Type)): object 'pmelt' not found
-{% endhighlight %}
+![plot of chunk hda_mtl_plot](/Figs/hda_mtl_plot-1.png)
  
 While the odds of a draw haven't changed much, the odds of a Montreal or Toronto win have slightly. Note that over the past 10 years, Montreal has performed better, on average, than Toronto, so this is expected. As well, Monteal benefits from the home ice advantage. We can calculate this for a Toronto home game too.
  
-
-{% highlight text %}
-## Error in predictResult(res_all, away, home): object 'res_all' not found
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in colnames(probs_df) <- c("Toronto Win", "Draw", "Montreal Win"): object 'probs_df' not found
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in probs_df$Sim.Type <- c("2015 Season", "2015 Season Time Weighted", : object 'probs_df' not found
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in melt(probs_df, id.vars = "Sim.Type"): object 'probs_df' not found
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in ggplot(pmelt, aes(y = value, x = variable, fill = Sim.Type)): object 'pmelt' not found
-{% endhighlight %}
+![plot of chunk hda_tor_plot](/Figs/hda_tor_plot-1.png)
  
 Why the difference in these two results? That's because the home advantage factor ranges not insignificantly. While not a huge range, it does impact the probabilities enough to make a noticeable difference.
  
@@ -209,7 +141,7 @@ predictOneGame(pmatrix, home, away)
 
 
 {% highlight text %}
-## [1] 4 1
+## [1] 1 0
 {% endhighlight %}
  
 Lets' do that a few times, to see the different results we get.
@@ -222,16 +154,16 @@ t(replicate(10, predictOneGame(pmatrix, home, away)))
 
 {% highlight text %}
 ##       [,1] [,2]
-##  [1,]    6    1
-##  [2,]    5    2
-##  [3,]    5    4
-##  [4,]    3    1
-##  [5,]    4    4
-##  [6,]    2    5
-##  [7,]    8    2
-##  [8,]    6    2
-##  [9,]    4    0
-## [10,]    3    1
+##  [1,]    2    0
+##  [2,]    3    0
+##  [3,]    4    1
+##  [4,]    1    0
+##  [5,]    3    1
+##  [6,]    1    2
+##  [7,]    1    1
+##  [8,]    1    1
+##  [9,]    1    0
+## [10,]    1    0
 {% endhighlight %}
  
 But, recall that the NHL doesn't allow draws. We cold solve that by randomly choosing a winner, but that does a disservice to teams who excel at those scenarios. A simple way of adding OT is to use the `log5` method, invented by [Bill James](https://en.wikipedia.org/wiki/Bill_James), which applies the following formula, (from [Wikipedia](https://en.wikipedia.org/wiki/Log5)) The Log5 estimate for the probability of A defeating B is $p_{A,B} = \frac{p_A-p_A\times p_B}{p_A+p_B-2\times p_A\times p_B}$, where $p_A$ is the proportion of A wins, and $p_B$ is the proportion of B wins. For now, we'll plug in even values (we'll use `pa=pb=0.5`, so `log5 = (pa-(pa*pb))/(pa+pb-(2*pa*pb))` will equal 0.5 as well), but later we can re-evaluate performance of each team.
@@ -279,16 +211,16 @@ t(replicate(10, predictOneGame(pmatrix, home, away)))
 
 {% highlight text %}
 ##       [,1] [,2] [,3]
-##  [1,] "2"  "1"  NA  
-##  [2,] "2"  "3"  NA  
-##  [3,] "7"  "1"  NA  
-##  [4,] "4"  "3"  NA  
-##  [5,] "3"  "2"  NA  
-##  [6,] "4"  "3"  "SO"
-##  [7,] "4"  "3"  NA  
-##  [8,] "7"  "4"  NA  
-##  [9,] "3"  "1"  NA  
-## [10,] "7"  "2"  NA
+##  [1,] "1"  "0"  NA  
+##  [2,] "1"  "2"  "OT"
+##  [3,] "2"  "0"  NA  
+##  [4,] "2"  "1"  "SO"
+##  [5,] "2"  "1"  "SO"
+##  [6,] "1"  "2"  "SO"
+##  [7,] "2"  "0"  NA  
+##  [8,] "1"  "0"  NA  
+##  [9,] "2"  "0"  NA  
+## [10,] "2"  "1"  NA
 {% endhighlight %}
  
 To predict the winner of a game in OT, we'll use the win percentages of each team in the most recent season. Let's grab the results from 2015 and figure out each team's OT and Shootout results. We have to look at each game, so we'll take this opportunity to collect the rest of the stats available to make a stats table.
@@ -459,16 +391,16 @@ t(replicate(10, predictOneGame(pmatrix, home, away)))
 
 {% highlight text %}
 ##       [,1] [,2] [,3]
-##  [1,]    7    0   NA
-##  [2,]    4    1   NA
-##  [3,]    7    1   NA
-##  [4,]    2    0   NA
-##  [5,]    7    1   NA
-##  [6,]    3    4   NA
-##  [7,]    5    1   NA
-##  [8,]    3    2   NA
-##  [9,]    5    2   NA
-## [10,]    3    2   NA
+##  [1,] "2"  "0"  NA  
+##  [2,] "2"  "0"  NA  
+##  [3,] "3"  "0"  NA  
+##  [4,] "2"  "0"  NA  
+##  [5,] "1"  "0"  NA  
+##  [6,] "2"  "1"  NA  
+##  [7,] "2"  "1"  "SO"
+##  [8,] "1"  "2"  "OT"
+##  [9,] "2"  "1"  "OT"
+## [10,] "2"  "0"  NA
 {% endhighlight %}
  
 Next time we'll look at predicting a whole sesason.

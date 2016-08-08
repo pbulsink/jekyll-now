@@ -9,7 +9,6 @@ layout: post
 excerpt_separator: <!--more-->
 tags: R hockey cleaning exploratory Dixon-Coles
 ---
----
 
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='images/',
@@ -85,6 +84,8 @@ nhl2015<-getAndPrepAllData(year_list = c(2015))
 
 [Last entry]({{ site.baseurl }}/blog/2016-08-04/data_preparation.html) we did some data importing and cleaning of historical NHL data, from 2005 to present. This was in anticipation of performing simulation of games, by the Dixon-Coles method. Much of this entry is not my original work, I've used slightly modified versions of the code available from Jonas at the [opisthokonta.com](http://opisthokonta.net/?p=890) [blog](http://opisthokonta.net/?p=913). I've mixed his [optimized Dixon-Coles method](http://opisthokonta.net/?p=939) and the [time regression method](http://opisthokonta.net/?p=1013) which was a key part of Dixon and Coles' paper.
 
+<!--more-->
+
 First, Dixon and Coles provide a method to increase the number of low-goal scoring games. A keen eye would notice that the goals scored is a bit biased 'left' compared to the actual Poisson curve:
 
 ```{r goals_vs_poisson_plot, echo=FALSE}
@@ -104,7 +105,7 @@ ggplot(prand_goals, aes(Goals, fill = Type)) +
     geom_bar(width=0.8, position = 'dodge')
 ```
 
-The Dixon-Coles method for adjusting for low scoring games is the tau ($\tau$) function, which we'll use in a bit.
+The Dixon-Coles method for adjusting for low scoring games is the tau (&tau;) function, which we'll use in a bit.
 ```{r}
 tau <- Vectorize(function(y1, y2, lambda, mu, rho){
     if (y1 == 0 & y2 == 0){return(1 - (lambda*mu*rho))
@@ -254,7 +255,7 @@ ggplot(team_params, aes(x=Attack, y=Defence, color=Team, label=Team)) +
     geom_text_repel(force=2, max.iter=5000) +
     theme(legend.position="none")
 ```
-The effect that time dependance has on the Poisson determination is weighting more recent games higher than older results. There are a few reasons why this matters, including the effect of short term hot and cold streaks, but also to account for how teams change over time (player quality changes due to age, players added and removed by trades, drafts, or retirement; changes in coaches or coaching style, etc). To add this to our method from above, we need to start with adding a weighting function based on $\xi$ (xi):
+The effect that time dependance has on the Poisson determination is weighting more recent games higher than older results. There are a few reasons why this matters, including the effect of short term hot and cold streaks, but also to account for how teams change over time (player quality changes due to age, players added and removed by trades, drafts, or retirement; changes in coaches or coaching style, etc). To add this to our method from above, we need to start with adding a weighting function based on &xi; (xi):
 
 ```{r}
 DCweights <- function(dates, currentDate=Sys.Date(), xi=0){
@@ -266,7 +267,7 @@ DCweights <- function(dates, currentDate=Sys.Date(), xi=0){
 }
 ```
 
-We can see the effect this has by throwing the list of dates from our scores into the function, with different values of $\xi$.
+We can see the effect this has by throwing the list of dates from our scores into the function, with different values of &xi;.
 
 ```{r xi_plot, echo=FALSE}
 #Turn this into a shiny app?
@@ -281,7 +282,7 @@ ggplot(m_weights, aes(Date, value, color=variable))+geom_point(size=0.5)
 
 This graph shows the weight (0 to 1) of a game on a certain date. The lower the weight, the less it impacts the model's optimization. The graph is choppy, because weights are given for games, there's no games played in summer, and in 2012 there was a lockout (note the exta large gap). 
 
-While it might make sense to use a $\xi$ value of 0.005 (focusing mostly on this season, somewhat on the last, but not much on seasons before that), evaulation of the performance of the model at each $\xi$ value would be the best determiner of what to use. Again, we'll look at that later.
+While it might make sense to use a &xi; value of 0.005 (focusing mostly on this season, somewhat on the last, but not much on seasons before that), evaulation of the performance of the model at each &xi; value would be the best determiner of what to use. Again, we'll look at that later.
 
 With the weighting function available, we'll modify the rest of the functions to use the weights:
 
@@ -360,7 +361,7 @@ doDCPrediction_w<-function(df, xi=0){
                           paste('Attack', dcm$teams[1:(nteams-1)], sep='.'),
                           paste('Defence', dcm$teams, sep='.'))
     
-    res <- optim(par=par.inits, fn=DCoptimFn_w, DCm=dcm, xi=xi, method='BFGS')
+    res <- optim(par=par.inits, fn=DCoptimFn_w, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE)
     
     parameters <- res$par
     

@@ -144,13 +144,13 @@ DCoptimFn <- function(params, DCm, xi=0){
     
     w<-DCweights(DCm$dates, xi=xi)
     return(
-        DClogLik(y1=DCm$homeGoals, y2=DCm$awayGoals, lambda, mu, rho.p, w) * -1
+        DClogLik_w(y1=DCm$homeGoals, y2=DCm$awayGoals, lambda, mu, rho.p, w) * -1
     )
 }
 
 doDCPrediction<-function(df, xi=0){
     #Get a useful data set
-    dcm<-DCmodelData(df)
+    dcm<-DCmodelData_w(df)
     nteams <- length(dcm$teams)
     
     #dummy fill parameters
@@ -167,7 +167,7 @@ doDCPrediction<-function(df, xi=0){
                           paste('Attack', dcm$teams[1:(nteams-1)], sep='.'),
                           paste('Defence', dcm$teams, sep='.'))
     
-    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method='BFGS')
+    res <- optim(par=par.inits, fn=DCoptimFn_w, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE)
     
     parameters <- res$par
     
@@ -202,7 +202,7 @@ In [section 1]({{ site.baseurl }}/blog/2016-08-04/data_preparation.html), we pre
 
 Poisson analysis is good at predicting, based on an average, the proportion of each integer events happening. So, if we expect 3.1 goals to be scored by a certain team as an average, we know that the proportion of that is going to be (in R code) `dpois(3,3.1)`, equalling `r dpois(3,3.1)`. Similarly, the chance that 1 and 2 goals is scored by that team to be `dpois(c(1,2), 3.1)` to be `r dpois(c(1,2),3.1)[1]` and `r dpois(c(1,2),3.1)[2]` respectively. 
 
-The Dixon-Coles optimization gave us 'attack' and 'defence' parameters, along with a home field advantage factor `home` and a fudge fator for low-scoring games, 'rho' ($\rho$). For two teams, Home and Away, we can calculate their expected goals socred by adding their attack, plus the opposing teams' defence, plus (for home) the home field advantage. This will give us a 'lambda' ($\lambda$) and 'mu' ($\mu$) which are the home and away goals expected. For example, let's use Toronto Maple Leafs vs. Montreal Canadiens:
+The Dixon-Coles optimization gave us 'attack' and 'defence' parameters, along with a home field advantage factor `home` and a fudge fator for low-scoring games, 'rho' (&rho;). For two teams, Home and Away, we can calculate their expected goals socred by adding their attack, plus the opposing teams' defence, plus (for home) the home field advantage. This will give us a 'lambda' (&lambda;) and 'mu' (&mu;) which are the home and away goals expected. For example, let's use Toronto Maple Leafs vs. Montreal Canadiens:
 
 ```{r}
 home<-"Montreal Canadiens"
@@ -211,7 +211,7 @@ away<-"Toronto Maple Leafs"
 
 Montreal is a stronger team this year, we expect a higher attack and lower defence factor. For the 2015 season only, they are, in fact, `r res_2015$par['Attack.Montreal Canadiens']` and `r res_2015$par['Defence.Montreal Canadiens']`. Similarly, Toronto's factors are `r res_2015$par['Attack.Toronto Maple Leafs']` and `r res_2015$par['Defence.Toronto Maple Leafs']` respectively. 
 
-We'll do the addition to get $\lambda$ and $\mu$:
+We'll do the addition to get &lambda; and &mu;:
 ```{r}
 # Expected goals home
 lambda <- exp(res_2015$par['HOME'] + res_2015$par["Attack.Montreal Canadiens"] + res_2015$par["Defence.Toronto Maple Leafs"])
@@ -221,7 +221,7 @@ mu <- exp(res_2015$par["Attack.Toronto Maple Leafs"] + res_2015$par["Defence.Mon
 
 Thus, we expect Montreal to score `r lambda` goals and Toronto to score `r mu` goals. 
 
-Using this knowledge, we can create a probability matrix of Home and Away goals' Poisson probability. Using $\lambda$ and $\mu$, `probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))`, and a maximum number of goals per team of 8:
+Using this knowledge, we can create a probability matrix of Home and Away goals' Poisson probability. Using &lambda; and &mu;, `probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))`, and a maximum number of goals per team of 8:
 
 ```{r kable, echo=FALSE}
 maxgoal=8
@@ -231,7 +231,7 @@ library(knitr)
 kable(probability_matrix,digits=6)
 ```
 
-This has the away score on the top (as columns), and the home score along the side (as rows). Recall that we need to apply the $\tau$ function to this matrix, to account for low scoring games. Once that is done, we can sum the diagonal of the matrix to find the probability of a tie. The sum of the upper triangle is the probability of an away win, and the sum of the lower triangle is the home win.
+This has the away score on the top (as columns), and the home score along the side (as rows). Recall that we need to apply the &tau; function to this matrix, to account for low scoring games. Once that is done, we can sum the diagonal of the matrix to find the probability of a tie. The sum of the upper triangle is the probability of an away win, and the sum of the lower triangle is the home win.
 
 Putting it all together we get this function:
 
