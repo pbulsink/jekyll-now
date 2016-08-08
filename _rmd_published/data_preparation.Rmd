@@ -38,7 +38,7 @@ head(nhl2015)
 There's a few things to note. There's a few extra columns that don't matter, like ```Notes```, ```Notes.1```, etc. In fact, we only need a few columns, so we'll drop the rest. Some seasons have games postponed, those games have no data, and will mess up our results, so we'll cancel those too. Finally, names like ```G``` and ```G.1``` aren't useful, so lets fix those. 
 
 ```{r}
-nhl2015<-nhl2015[,c('Date','Visitor','G','Home','G.1','X')]
+nhl2015<-nhl2015[2:7]
 nhl2015<-nhl2015[!is.na(nhl2015$G),]
 colnames(nhl2015)<-c("Date", "AwayTeam","AG","HomeTeam","HG","OT.SO")
 ```
@@ -138,7 +138,6 @@ That looks better, but the effect of tied games overrides the normal distributio
 First, lets' make a function to handle the whole import and cleaning set. This just does what we did above:
 ```{r}
 nhlDataPrep<-function(df) {
-  df<-df[,c('Date','Visitor','G','Home','G.1','X')]
   colnames(df)<-c("Date", "AwayTeam","AG","HomeTeam","HG","OT.SO")
   df<-df[!is.na(df$AG),]
   df$OT.Win<-apply(df,1,otTagger)
@@ -154,9 +153,9 @@ I'll pull from the 2005-2006 season forward, when they started the shootout unti
 
 ```{r}
 getAndPrepAllData<-function(year_list=c(2006, 2007, 2008, 2009,2010,2011,2012,2013,2014,2015,2016)){
-    df<-data.frame(Date=NULL, Visitor=NULL, G=NULL, Home=NULL, G.1=NULL, X=NULL)
+    df<-data.frame(Date=NULL, Visitor=NULL, G=NULL, Home=NULL, G.1=NULL, X.1=NULL)
     for (year in 1:length(year_list)){
-        df<-rbind(df, read.csv(paste('./_data/',year_list[year]-1,year_list[year],".csv", sep=''))[c("Date", "Visitor", "G", "Home", "G.1", "X")])
+        df<-rbind(df, read.csv(paste('./_data/',year_list[year]-1,year_list[year],".csv", sep=''))[2:7])
     }
     df[df$Home == "Phoenix Coyotes",]$Home <- "Arizona Coyotes"
     df[df$Visitor == "Phoenix Coyotes",]$Visitor <- "Arizona Coyotes"
