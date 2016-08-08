@@ -45,17 +45,17 @@ Thus, we expect Montreal to score 0.5932014 goals and Toronto to score 0.4884788
 Using this knowledge, we can create a probability matrix of Home and Away goals' Poisson probability. Using &lambda; and &mu;, `probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))`, and a maximum number of goals per team of 8:
  
 
-|   |        0|        1|        2|        3|        4|       5|     6|  7|  8|
-|:--|--------:|--------:|--------:|--------:|--------:|-------:|-----:|--:|--:|
-|0  | 0.339025| 0.165607| 0.040448| 0.006586| 0.000804| 7.9e-05| 6e-06|  0|  0|
-|1  | 0.201110| 0.098238| 0.023994| 0.003907| 0.000477| 4.7e-05| 4e-06|  0|  0|
-|2  | 0.059649| 0.029138| 0.007117| 0.001159| 0.000142| 1.4e-05| 1e-06|  0|  0|
-|3  | 0.011795| 0.005761| 0.001407| 0.000229| 0.000028| 3.0e-06| 0e+00|  0|  0|
-|4  | 0.001749| 0.000854| 0.000209| 0.000034| 0.000004| 0.0e+00| 0e+00|  0|  0|
-|5  | 0.000208| 0.000101| 0.000025| 0.000004| 0.000000| 0.0e+00| 0e+00|  0|  0|
-|6  | 0.000021| 0.000010| 0.000002| 0.000000| 0.000000| 0.0e+00| 0e+00|  0|  0|
-|7  | 0.000002| 0.000001| 0.000000| 0.000000| 0.000000| 0.0e+00| 0e+00|  0|  0|
-|8  | 0.000000| 0.000000| 0.000000| 0.000000| 0.000000| 0.0e+00| 0e+00|  0|  0|
+|   |       0|       1|       2|       3|       4|     5|     6|  7|  8|
+|:--|-------:|-------:|-------:|-------:|-------:|-----:|-----:|--:|--:|
+|0  | 0.33903| 0.16561| 0.04045| 0.00659| 0.00080| 8e-05| 1e-05|  0|  0|
+|1  | 0.20111| 0.09824| 0.02399| 0.00391| 0.00048| 5e-05| 0e+00|  0|  0|
+|2  | 0.05965| 0.02914| 0.00712| 0.00116| 0.00014| 1e-05| 0e+00|  0|  0|
+|3  | 0.01179| 0.00576| 0.00141| 0.00023| 0.00003| 0e+00| 0e+00|  0|  0|
+|4  | 0.00175| 0.00085| 0.00021| 0.00003| 0.00000| 0e+00| 0e+00|  0|  0|
+|5  | 0.00021| 0.00010| 0.00002| 0.00000| 0.00000| 0e+00| 0e+00|  0|  0|
+|6  | 0.00002| 0.00001| 0.00000| 0.00000| 0.00000| 0e+00| 0e+00|  0|  0|
+|7  | 0.00000| 0.00000| 0.00000| 0.00000| 0.00000| 0e+00| 0e+00|  0|  0|
+|8  | 0.00000| 0.00000| 0.00000| 0.00000| 0.00000| 0e+00| 0e+00|  0|  0|
  
 This has the away score on the top (as columns), and the home score along the side (as rows). Recall that we need to apply the &tau; function to this matrix, to account for low scoring games. Once that is done, we can sum the diagonal of the matrix to find the probability of a tie. The sum of the upper triangle is the probability of an away win, and the sum of the lower triangle is the home win.
  
@@ -141,7 +141,7 @@ predictOneGame(pmatrix, home, away)
 
 
 {% highlight text %}
-## [1] 1 0
+## [1] 2 0
 {% endhighlight %}
  
 Lets' do that a few times, to see the different results we get.
@@ -154,14 +154,14 @@ t(replicate(10, predictOneGame(pmatrix, home, away)))
 
 {% highlight text %}
 ##       [,1] [,2]
-##  [1,]    2    0
-##  [2,]    3    0
-##  [3,]    4    1
-##  [4,]    1    0
-##  [5,]    3    1
-##  [6,]    1    2
+##  [1,]    3    0
+##  [2,]    4    1
+##  [3,]    1    0
+##  [4,]    3    1
+##  [5,]    1    2
+##  [6,]    1    1
 ##  [7,]    1    1
-##  [8,]    1    1
+##  [8,]    1    0
 ##  [9,]    1    0
 ## [10,]    1    0
 {% endhighlight %}
@@ -211,16 +211,16 @@ t(replicate(10, predictOneGame(pmatrix, home, away)))
 
 {% highlight text %}
 ##       [,1] [,2] [,3]
-##  [1,] "1"  "0"  NA  
-##  [2,] "1"  "2"  "OT"
-##  [3,] "2"  "0"  NA  
+##  [1,] "1"  "2"  "OT"
+##  [2,] "2"  "0"  NA  
+##  [3,] "2"  "1"  "SO"
 ##  [4,] "2"  "1"  "SO"
-##  [5,] "2"  "1"  "SO"
-##  [6,] "1"  "2"  "SO"
-##  [7,] "2"  "0"  NA  
-##  [8,] "1"  "0"  NA  
-##  [9,] "2"  "0"  NA  
-## [10,] "2"  "1"  NA
+##  [5,] "1"  "2"  "SO"
+##  [6,] "2"  "0"  NA  
+##  [7,] "1"  "0"  NA  
+##  [8,] "2"  "0"  NA  
+##  [9,] "2"  "1"  NA  
+## [10,] "2"  "0"  NA
 {% endhighlight %}
  
 To predict the winner of a game in OT, we'll use the win percentages of each team in the most recent season. Let's grab the results from 2015 and figure out each team's OT and Shootout results. We have to look at each game, so we'll take this opportunity to collect the rest of the stats available to make a stats table.
@@ -307,38 +307,38 @@ makeStatsTable <- function(df) {
  
 We use it by calling `makeStatsTable` with the input being the season data.
 
-|Team                  | GP|  W| OTL|  L| ROW|   P|  GF|  GA| DIFF|        PP| OT.Win.Percent|
-|:---------------------|--:|--:|---:|--:|---:|---:|---:|---:|----:|---------:|--------------:|
-|New York Rangers      | 82| 53|   7| 22|  49| 113| 252| 192|   60| 1.3780488|      0.5882353|
-|Montreal Canadiens    | 82| 50|  10| 22|  43| 110| 221| 189|   32| 1.3414634|      0.6190476|
-|Anaheim Ducks         | 82| 51|   7| 24|  43| 109| 236| 226|   10| 1.3292683|      0.6666667|
-|St. Louis Blues       | 82| 51|   7| 24|  42| 109| 248| 201|   47| 1.3292683|      0.6666667|
-|Tampa Bay Lightning   | 82| 50|   8| 24|  47| 108| 262| 211|   51| 1.3170732|      0.3333333|
-|Nashville Predators   | 82| 47|  10| 25|  41| 104| 232| 208|   24| 1.2682927|      0.5000000|
-|Chicago Blackhawks    | 82| 48|   6| 28|  39| 102| 229| 189|   40| 1.2439024|      0.8000000|
-|Vancouver Canucks     | 82| 48|   5| 29|  42| 101| 242| 222|   20| 1.2317073|      0.7058824|
-|Washington Capitals   | 82| 45|  11| 26|  40| 101| 242| 203|   39| 1.2317073|      0.4000000|
-|New York Islanders    | 82| 47|   7| 28|  40| 101| 252| 230|   22| 1.2317073|      0.6190476|
-|Minnesota Wild        | 82| 46|   8| 28|  42| 100| 231| 201|   30| 1.2195122|      0.5000000|
-|Detroit Red Wings     | 82| 43|  14| 25|  39| 100| 235| 221|   14| 1.2195122|      0.4074074|
-|Ottawa Senators       | 82| 43|  13| 26|  37|  99| 238| 215|   23| 1.2073171|      0.4333333|
-|Winnipeg Jets         | 82| 43|  13| 26|  36|  99| 230| 210|   20| 1.2073171|      0.3928571|
-|Pittsburgh Penguins   | 82| 43|  12| 27|  39|  98| 221| 210|   11| 1.1951220|      0.3571429|
-|Calgary Flames        | 82| 45|   7| 30|  41|  97| 241| 216|   25| 1.1829268|      0.6500000|
-|Boston Bruins         | 82| 41|  14| 27|  37|  96| 213| 211|    2| 1.1707317|      0.4062500|
-|Los Angeles Kings     | 82| 40|  15| 27|  38|  95| 220| 205|   15| 1.1585366|      0.1153846|
-|Dallas Stars          | 82| 41|  10| 31|  37|  92| 261| 260|    1| 1.1219512|      0.5000000|
-|Florida Panthers      | 82| 38|  15| 29|  30|  91| 206| 223|  -17| 1.1097561|      0.3214286|
-|Colorado Avalanche    | 82| 39|  12| 31|  29|  90| 219| 227|   -8| 1.0975610|      0.4137931|
-|San Jose Sharks       | 82| 40|   9| 33|  36|  89| 228| 232|   -4| 1.0853659|      0.3750000|
-|Columbus Blue Jackets | 82| 42|   5| 35|  33|  89| 236| 250|  -14| 1.0853659|      0.8235294|
-|Philadelphia Flyers   | 82| 33|  18| 31|  30|  84| 215| 234|  -19| 1.0243902|      0.2162162|
-|New Jersey Devils     | 82| 32|  14| 36|  27|  78| 181| 216|  -35| 0.9512195|      0.2307692|
-|Carolina Hurricanes   | 82| 30|  11| 41|  25|  71| 188| 226|  -38| 0.8658537|      0.3157895|
-|Toronto Maple Leafs   | 82| 30|   8| 44|  25|  68| 211| 262|  -51| 0.8292683|      0.4000000|
-|Edmonton Oilers       | 82| 24|  14| 44|  19|  62| 198| 283|  -85| 0.7560976|      0.2413793|
-|Arizona Coyotes       | 82| 24|   8| 50|  19|  56| 170| 272| -102| 0.6829268|      0.5555556|
-|Buffalo Sabres        | 82| 23|   8| 51|  15|  54| 161| 274| -113| 0.6585366|      0.5625000|
+|Team                  | GP|  W| OTL|  L| ROW|   P|  GF|  GA| OT.Win.Percent|
+|:---------------------|--:|--:|---:|--:|---:|---:|---:|---:|--------------:|
+|New York Rangers      | 82| 53|   7| 22|  49| 113| 252| 192|      0.5882353|
+|Montreal Canadiens    | 82| 50|  10| 22|  43| 110| 221| 189|      0.6190476|
+|Anaheim Ducks         | 82| 51|   7| 24|  43| 109| 236| 226|      0.6666667|
+|St. Louis Blues       | 82| 51|   7| 24|  42| 109| 248| 201|      0.6666667|
+|Tampa Bay Lightning   | 82| 50|   8| 24|  47| 108| 262| 211|      0.3333333|
+|Nashville Predators   | 82| 47|  10| 25|  41| 104| 232| 208|      0.5000000|
+|Chicago Blackhawks    | 82| 48|   6| 28|  39| 102| 229| 189|      0.8000000|
+|Vancouver Canucks     | 82| 48|   5| 29|  42| 101| 242| 222|      0.7058824|
+|Washington Capitals   | 82| 45|  11| 26|  40| 101| 242| 203|      0.4000000|
+|New York Islanders    | 82| 47|   7| 28|  40| 101| 252| 230|      0.6190476|
+|Minnesota Wild        | 82| 46|   8| 28|  42| 100| 231| 201|      0.5000000|
+|Detroit Red Wings     | 82| 43|  14| 25|  39| 100| 235| 221|      0.4074074|
+|Ottawa Senators       | 82| 43|  13| 26|  37|  99| 238| 215|      0.4333333|
+|Winnipeg Jets         | 82| 43|  13| 26|  36|  99| 230| 210|      0.3928571|
+|Pittsburgh Penguins   | 82| 43|  12| 27|  39|  98| 221| 210|      0.3571429|
+|Calgary Flames        | 82| 45|   7| 30|  41|  97| 241| 216|      0.6500000|
+|Boston Bruins         | 82| 41|  14| 27|  37|  96| 213| 211|      0.4062500|
+|Los Angeles Kings     | 82| 40|  15| 27|  38|  95| 220| 205|      0.1153846|
+|Dallas Stars          | 82| 41|  10| 31|  37|  92| 261| 260|      0.5000000|
+|Florida Panthers      | 82| 38|  15| 29|  30|  91| 206| 223|      0.3214286|
+|Colorado Avalanche    | 82| 39|  12| 31|  29|  90| 219| 227|      0.4137931|
+|San Jose Sharks       | 82| 40|   9| 33|  36|  89| 228| 232|      0.3750000|
+|Columbus Blue Jackets | 82| 42|   5| 35|  33|  89| 236| 250|      0.8235294|
+|Philadelphia Flyers   | 82| 33|  18| 31|  30|  84| 215| 234|      0.2162162|
+|New Jersey Devils     | 82| 32|  14| 36|  27|  78| 181| 216|      0.2307692|
+|Carolina Hurricanes   | 82| 30|  11| 41|  25|  71| 188| 226|      0.3157895|
+|Toronto Maple Leafs   | 82| 30|   8| 44|  25|  68| 211| 262|      0.4000000|
+|Edmonton Oilers       | 82| 24|  14| 44|  19|  62| 198| 283|      0.2413793|
+|Arizona Coyotes       | 82| 24|   8| 50|  19|  56| 170| 272|      0.5555556|
+|Buffalo Sabres        | 82| 23|   8| 51|  15|  54| 161| 274|      0.5625000|
  
 We'll feed it into a log5 function, and use that instead of a factor of 0.5 to determine OT winners. As well, it's trivial to determine that on average, the number of games ending in shootout is slightly higher than the number ending in overtime.
  
@@ -392,15 +392,15 @@ t(replicate(10, predictOneGame(pmatrix, home, away)))
 {% highlight text %}
 ##       [,1] [,2] [,3]
 ##  [1,] "2"  "0"  NA  
-##  [2,] "2"  "0"  NA  
-##  [3,] "3"  "0"  NA  
-##  [4,] "2"  "0"  NA  
-##  [5,] "1"  "0"  NA  
-##  [6,] "2"  "1"  NA  
-##  [7,] "2"  "1"  "SO"
-##  [8,] "1"  "2"  "OT"
-##  [9,] "2"  "1"  "OT"
-## [10,] "2"  "0"  NA
+##  [2,] "3"  "0"  NA  
+##  [3,] "2"  "0"  NA  
+##  [4,] "1"  "0"  NA  
+##  [5,] "2"  "1"  NA  
+##  [6,] "2"  "1"  "SO"
+##  [7,] "1"  "2"  "OT"
+##  [8,] "2"  "1"  "OT"
+##  [9,] "2"  "0"  NA  
+## [10,] "2"  "1"  NA
 {% endhighlight %}
  
 Next time we'll look at predicting a whole sesason.

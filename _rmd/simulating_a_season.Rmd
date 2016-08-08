@@ -1,16 +1,22 @@
 ---
-title: "04 Simulating a Season"
+title: "Simulating a Season"
 author: "Philip Bulsink"
-date: "March 19, 2016"
+date: "August 09, 2016"
 output: html_document
+status: process
+published: true
+layout: post
+excerpt_separator: <!--more-->
+tags: R hockey predicting Dixon-Coles
 ---
+
 ```{r global_options, include=FALSE}
-knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='images/',
                       warning=FALSE, message=FALSE, tidy=TRUE)
 set.seed(1)
 library(knitr)
 ```
-```{r prep_chunk, echo=FALSE, cache=TRUE, warning=FALSE, cache.extra=tools::md5sum('../data/leagues_NHL_2016_games_games.csv')}
+```{r prep_chunk, echo=FALSE, warning=FALSE}
 #Import data 
 otTagger<-function(row) {
   if (row['OT.SO'] != '') {
@@ -39,7 +45,6 @@ otFixer<-function(row) {
 }
 
 nhlDataPrep<-function(df) {
-  df<-df[,c('Date','Visitor','G','Home','G.1','X')]
   colnames(df)<-c("Date", "AwayTeam","AG","HomeTeam","HG","OT.SO")
   df<-df[!is.na(df$AG),]
   df$OT.Win<-apply(df,1,otTagger)
@@ -61,9 +66,9 @@ clean_teams<-function(df){
 
     
 getAndPrepAllData<-function(year_list=c(2006, 2007, 2008, 2009,2010,2011,2012,2013,2014,2015,2016)){
-    df<-data.frame(Date=NULL, Visitor=NULL, G=NULL, Home=NULL, G.1=NULL, X=NULL)
+    df<-data.frame(Date=NULL, Visitor=NULL, G=NULL, Home=NULL, G.1=NULL, X.1=NULL)
     for (year in 1:length(year_list)){
-        df<-rbind(df, read.csv(paste('../data/leagues_NHL_',year_list[year],'_games_games.csv', sep=''))[c("Date", "Visitor", "G", "Home", "G.1", "X")])
+        df<-rbind(df, read.csv(paste('./_data/',year_list[year]-1,year_list[year],".csv", sep=''))[2:7])
     }
     try(clean_teams(df), silent=TRUE)
     df<-droplevels(df)
@@ -164,7 +169,7 @@ doDCPrediction<-function(df, xi=0){
                           paste('Attack', dcm$teams[1:(nteams-1)], sep='.'),
                           paste('Defence', dcm$teams, sep='.'))
     
-    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method='BFGS')
+    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE)
     
     parameters <- res$par
     
@@ -356,9 +361,13 @@ buildStandingsTable<-function(stats, standings=NA){
 }
 ```
 
-Last time we predicted the score of a game using the time dependant Dixon-Coles method. 
+*Note: This is earlier work I did (last winter/spring) so some info may seem dated at time of posting. I've used data files current to then.*
+
+[Last time]({{ site.baseurl }}/blog/2016-08-08/dixon_coles_scores.html) we predicted the score of a game using the time dependant Dixon-Coles method. 
 
 The interesting application of this is predicting how teams will do between now and the end of the season. One would really like to know if their team would make the playoffs or not. While no model can predict the impact of major trades, coaching changes, or other unforseen factors, they can do a very reasonable job at predicting what will happen if teams continue playing as they have been.
+
+<!--more-->
 
 To do these simulations, we'll simulate each game of the remaining season multiple times. We need to plug into the model each game, and track the results. 
 
@@ -398,7 +407,7 @@ predictScore<-function(res, stats, home, away, maxgoal=8){
 ```
 
 Before we go predicting games, we need to have a list of things to predict. Taking the most recent season (2015-2016), we'll strip out all the games after today:
-```{r cache=TRUE, cache.extra=tools::md5sum('../data/leagues_NHL_2016_games_games.csv')}
+```{r}
 nhlFutureGames<-function(df){
     df<-df[,c('Date','Visitor','G','Home','G.1')]
     df$Date<-as.Date(df$Date)
@@ -409,13 +418,13 @@ nhlFutureGames<-function(df){
     return(df)
 }
 
-future_games<-nhlFutureGames(read.csv('../data/leagues_NHL_2016_games_games.csv'))
+future_games<-nhlFutureGames(read.csv('./_data/20152016.csv'))
 ```
 
 Now, for each game, simulate a result. But, we need some place to put the results... lets add them to the results table we made last time! As well, simulating a season once doesn't give us a lot of information. We may as well make a best guess where teams will finish. What we really want to do is simulate the season lots of times, to get a decent probability of where a team will finish in the standings. This will take two functions. One to finish the season, taking the schedule, stats (for overtime win percent, etc), and parameters that we generated in the Dixon-Coles process. The other will take that data, plus the season standings thus far, and give us a likely probability of where the teams will finish as a standings table.
 
-```{r read_and_sim, cache=TRUE, cache.extra=tools::md5sum('../data/leagues_NHL_2016_games_games.csv')}
-nhl2016<-nhlDataPrep(read.csv('../data/leagues_NHL_2016_games_games.csv'))
+```{r read_and_sim}
+nhl2016<-nhlDataPrep(read.csv('./_data/20152016.csv')[2:7])
 nhl_2016_stats<-makeStatsTable(nhl2016)
 
 buildStandingsTable<-function(stats, standings=NA){
@@ -476,19 +485,19 @@ simulateSeason<-function(res, schedule, stats, past_results, n=10000, maxgoal=8)
 }
 ```
 
-For the record, here's where teams are now:
+For the record, here's where teams are now (March 20, 2016):
 ```{r current_standings, echo=FALSE}
 kable(nhl_2016_stats[,1:10])
 ```
 
-We can predict the season's remaining games, to figure out what chances our favourite team has of finishing in any position! We'll start with the nhl2016 data only, with no time weighting.
-```{r poisson_2016, cache=TRUE, cache.extra=tools::md5sum('../data/leagues_NHL_2016_games_games.csv')}
+We can predict the season's remaining games, to figure out what chances our favourite team has of finishing in any position! We need to get the DC parametsrs, as per usual. We'll start with the nhl2016 data only, with no time weighting.
+```{r poisson_2016}
 res_2016<-doDCPrediction(nhl2016)
 ```
 
-If we do that once, we can get a nice stats table, as we'd find on the NHL website. Note that some games were cancelled for a snowstorm in January and may not have been rescheduled yet, so their teams may have less games played.
+If we run a preiction, we can get a nice stats table, as we'd find on the NHL website. Note that some games were cancelled for a snowstorm in January and may not have been rescheduled yet, so their teams may have less games played.
 
-```{r predict_remainder, cache=TRUE, cache.extra=tools::md5sum('../data/leagues_NHL_2016_games_games.csv')}
+```{r predict_remainder}
 remainder_2016<-predictRemainderOfSeason(res_2016, future_games, nhl_2016_stats)
 all_results<-rbind(nhl2016, remainder_2016)
 stats_sim_2016<-makeStatsTable(all_results)
@@ -497,7 +506,7 @@ kable(stats_sim_2016[,1:10])
 
 But, while doing that once is cool, we need to do that over and over again to really get a picture of the chance each team has of making the playoffs by the end of the season. This we'll do with `n=1000`, to save time.
 
-```{r predict_seasons, cache=TRUE, cache.extra=tools::md5sum('../data/leagues_NHL_2016_games_games.csv')}
+```{r predict_seasons}
 nhl_2016_predicted_standings<-simulateSeason(res_2016, future_games, nhl_2016_stats, past_results=nhl2016, n=1000)
 kable(nhl_2016_predicted_standings)
 ```
@@ -565,9 +574,11 @@ From our calculations, we can see that the Eastern Conference standings are like
 ```{r echo=FALSE}
 east_standings<-getConferenceStandings(nhl_2016_predicted_standings, "East")
 kable(east_standings)
+east_in<-rownames(east_standings)[8]
+east_out<-rownames(east_standings)[9]
 ```
 
-So, the `r rownames(east_standings)[8]` likely squeak into the playoffs, while `r rownames(east_standings)[9]` just miss them. But, of course, the odds are good that it could be the other way around too! Nothing is set in stone until the final whistle blows.
+So, the `r east_in` likely squeak into the playoffs, while `r east_out` just miss them. But, of course, the odds are good that it could be the other way around too! Nothing is set in stone until the final whistle blows.
 
 Similarly, the West standings would look like this:
 
@@ -578,7 +589,7 @@ kable(west_standings)
 
 It'd look cleaner (and be better for sorting) to average the points each team recieves (and keep the variance around for good measure). 
 
-```{r code, echo=TRUE, cache.extra=tools::md5sum('../data/leagues_NHL_2016_games_games.csv')}
+```{r code, echo=TRUE}
 new_stdev<-function(stdev, mean, pop, new_val){
     n_m = new_mean(mean, pop, new_val)
     return(sqrt((((pop-2)*stdev^2) + (new_val - n_m)*(new_val-mean))/(pop-1)))
@@ -659,11 +670,11 @@ The interesting things are: chances of president's trophy and chances to make pl
 
 We can get this info quite simply from the above code:
 
-```{r sim_season_mean, cache=TRUE, cache.extra=tools::md5sum('../data/leagues_NHL_2016_games_games.csv')}
+```{r sim_season_mean}
 results<-point_predict(res_2016, future_games, nhl_2016_stats, past_results=nhl2016, n=1000)
 kable(results[,c(1,3,5)])
 ```
 
 Next time we'll evaluate the performance of the different models and validate our predictions!
 
-* Note that there is a tiebreaker not currently built in whereby head to head results matter for two tied teams. This isn't usually required for playoff make or break decisions, particularly in a Monte-Carlo prediction.
+* Note that there is a tiebreaker not currently built in whereby head to head results matter for two tied teams. This isn't usually required for playoff make or break decisions, particularly in a Monte-Carlo prediction. *
