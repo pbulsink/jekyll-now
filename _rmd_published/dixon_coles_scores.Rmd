@@ -10,7 +10,7 @@ excerpt_separator: <!--more-->
 tags: R hockey cleaning predicting Dixon-Coles
 ---
 ```{r global_options, include=FALSE}
-knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='images/',
                       warning=FALSE, message=FALSE, tidy=TRUE)
 set.seed(1)
 ```
@@ -144,13 +144,13 @@ DCoptimFn <- function(params, DCm, xi=0){
     
     w<-DCweights(DCm$dates, xi=xi)
     return(
-        DClogLik_w(y1=DCm$homeGoals, y2=DCm$awayGoals, lambda, mu, rho.p, w) * -1
+        DClogLik(y1=DCm$homeGoals, y2=DCm$awayGoals, lambda, mu, rho.p, w) * -1
     )
 }
 
 doDCPrediction<-function(df, xi=0){
     #Get a useful data set
-    dcm<-DCmodelData_w(df)
+    dcm<-DCmodelData(df)
     nteams <- length(dcm$teams)
     
     #dummy fill parameters
@@ -167,7 +167,7 @@ doDCPrediction<-function(df, xi=0){
                           paste('Attack', dcm$teams[1:(nteams-1)], sep='.'),
                           paste('Defence', dcm$teams, sep='.'))
     
-    res <- optim(par=par.inits, fn=DCoptimFn_w, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE)
+    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE)
     
     parameters <- res$par
     
@@ -228,7 +228,7 @@ maxgoal=8
 probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))
 rownames(probability_matrix)<-colnames(probability_matrix)<-c(0:8)
 library(knitr)
-kable(probability_matrix,digits=6)
+kable(probability_matrix,digits=6, padding=1)
 ```
 
 This has the away score on the top (as columns), and the home score along the side (as rows). Recall that we need to apply the &tau; function to this matrix, to account for low scoring games. Once that is done, we can sum the diagonal of the matrix to find the probability of a tie. The sum of the upper triangle is the probability of an away win, and the sum of the lower triangle is the home win.
@@ -403,11 +403,11 @@ makeStatsTable<-function(df) {
     tmpTable$HomeOTW = as.numeric(table(df$HomeTeam[(df$OT.Win == "H") & (df$OT.SO == "OT")]))
     tmpTable$HomeSOW = as.numeric(table(df$HomeTeam[(df$OT.Win == "H") & (df$OT.SO == "SO")]))
 
-    tmpTable$AwayOTW = as.numeric(table(df$AwayTeam[(df$OT.Win == "V") & (df$OT.SO == "OT")]))
-    tmpTable$AwaySOW = as.numeric(table(df$AwayTeam[(df$OT.Win == "V") & (df$OT.SO == "SO")]))
+    tmpTable$AwayOTW = as.numeric(table(df$AwayTeam[(df$OT.Win == "A") & (df$OT.SO == "OT")]))
+    tmpTable$AwaySOW = as.numeric(table(df$AwayTeam[(df$OT.Win == "A") & (df$OT.SO == "SO")]))
     
     #OT Losses
-    tmpTable$HomeOTL = as.numeric(table(df$HomeTeam[(df$OT.Win == "V")]))
+    tmpTable$HomeOTL = as.numeric(table(df$HomeTeam[(df$OT.Win == "A")]))
     tmpTable$AwayOTL = as.numeric(table(df$AwayTeam[(df$OT.Win == "H")]))
     
     #W/L/OTL/ROW
