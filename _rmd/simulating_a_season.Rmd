@@ -487,7 +487,10 @@ simulateSeason<-function(res, schedule, stats, past_results, n=10000, maxgoal=8)
 
 For the record, here's where teams are now (March 20, 2016):
 ```{r current_standings, echo=FALSE}
-kable(nhl_2016_stats[,1:10])
+library(pander)
+panderOptions('round',2)
+panderOptions('keep.trailing.zeros', TRUE)
+pandoc.table(nhl_2016_stats[,1:10], style="rmarkdown", caption="Current team standings")
 ```
 
 We can predict the season's remaining games, to figure out what chances our favourite team has of finishing in any position! We need to get the DC parametsrs, as per usual. We'll start with the nhl2016 data only, with no time weighting.
@@ -501,14 +504,14 @@ If we run a preiction, we can get a nice stats table, as we'd find on the NHL we
 remainder_2016<-predictRemainderOfSeason(res_2016, future_games, nhl_2016_stats)
 all_results<-rbind(nhl2016, remainder_2016)
 stats_sim_2016<-makeStatsTable(all_results)
-kable(stats_sim_2016[,1:10])
+pandoc.table(stats_sim_2016[,1:10], style="rmarkdown", caption="Predicted standings at end of season")
 ```
 
 But, while doing that once is cool, we need to do that over and over again to really get a picture of the chance each team has of making the playoffs by the end of the season. This we'll do with `n=1000`, to save time.
 
 ```{r predict_seasons}
 nhl_2016_predicted_standings<-simulateSeason(res_2016, future_games, nhl_2016_stats, past_results=nhl2016, n=1000)
-kable(nhl_2016_predicted_standings)
+pandoc.table(nhl_2016_predicted_standings, style="rmarkdown", caption="Predicted position at end of season after 1000 simulations")
 ```
 
 But, all of the results come out together in the standings table, but playoff positions are ranked by conference, and division. Each division's top 3 teams make the playoffs, as well as two wild card teams from each conference. We'll set up the divisions, confereces, and playoffs here.
@@ -573,7 +576,7 @@ From our calculations, we can see that the Eastern Conference standings are like
 
 ```{r echo=FALSE}
 east_standings<-getConferenceStandings(nhl_2016_predicted_standings, "East")
-kable(east_standings)
+pandoc.table(east_standings, style="rmarkdown", caption="Predicted Eastern Conference standings")
 east_in<-rownames(east_standings)[8]
 east_out<-rownames(east_standings)[9]
 ```
@@ -584,7 +587,7 @@ Similarly, the West standings would look like this:
 
 ```{r echo=FALSE}
 west_standings<-getConferenceStandings(nhl_2016_predicted_standings, "West")
-kable(west_standings)
+pandoc.table(west_standings, style="rmarkdown", caption="Predicted Western Conference standings")
 ```
 
 It'd look cleaner (and be better for sorting) to average the points each team recieves (and keep the variance around for good measure). 
@@ -672,7 +675,7 @@ We can get this info quite simply from the above code:
 
 ```{r sim_season_mean}
 results<-point_predict(res_2016, future_games, nhl_2016_stats, past_results=nhl2016, n=1000)
-kable(results[,c(1,3,5)])
+pandoc.table(results[,c(1,3,5)], style="rmarkdown", caption="Chances of playoff and President's Trophy per team")
 ```
 
 Next time we'll evaluate the performance of the different models and validate our predictions!

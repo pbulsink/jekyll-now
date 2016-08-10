@@ -45,17 +45,37 @@ Thus, we expect Montreal to score 0.5932014 goals and Toronto to score 0.4884788
 Using this knowledge, we can create a probability matrix of Home and Away goals' Poisson probability. Using &lambda; and &mu;, `probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))`, and a maximum number of goals per team of 8:
  
 
-|   |       0|       1|       2|       3|       4|     5|     6|  7|  8|
-|:--|-------:|-------:|-------:|-------:|-------:|-----:|-----:|--:|--:|
-|0  | 0.33903| 0.16561| 0.04045| 0.00659| 0.00080| 8e-05| 1e-05|  0|  0|
-|1  | 0.20111| 0.09824| 0.02399| 0.00391| 0.00048| 5e-05| 0e+00|  0|  0|
-|2  | 0.05965| 0.02914| 0.00712| 0.00116| 0.00014| 1e-05| 0e+00|  0|  0|
-|3  | 0.01179| 0.00576| 0.00141| 0.00023| 0.00003| 0e+00| 0e+00|  0|  0|
-|4  | 0.00175| 0.00085| 0.00021| 0.00003| 0.00000| 0e+00| 0e+00|  0|  0|
-|5  | 0.00021| 0.00010| 0.00002| 0.00000| 0.00000| 0e+00| 0e+00|  0|  0|
-|6  | 0.00002| 0.00001| 0.00000| 0.00000| 0.00000| 0e+00| 0e+00|  0|  0|
-|7  | 0.00000| 0.00000| 0.00000| 0.00000| 0.00000| 0e+00| 0e+00|  0|  0|
-|8  | 0.00000| 0.00000| 0.00000| 0.00000| 0.00000| 0e+00| 0e+00|  0|  0|
+{% highlight text %}
+## 
+## 
+## | &nbsp;  |   0    |   1    |   2    |   3    |   4   |   5   |  6  |
+## |:-------:|:------:|:------:|:------:|:------:|:-----:|:-----:|:---:|
+## |  **0**  | 0.339  | 0.1656 | 0.0404 | 0.0066 | 8e-04 | 1e-04 |  0  |
+## |  **1**  | 0.2011 | 0.0982 | 0.024  | 0.0039 | 5e-04 |   0   |  0  |
+## |  **2**  | 0.0596 | 0.0291 | 0.0071 | 0.0012 | 1e-04 |   0   |  0  |
+## |  **3**  | 0.0118 | 0.0058 | 0.0014 | 2e-04  |   0   |   0   |  0  |
+## |  **4**  | 0.0017 | 9e-04  | 2e-04  |   0    |   0   |   0   |  0  |
+## |  **5**  | 2e-04  | 1e-04  |   0    |   0    |   0   |   0   |  0  |
+## |  **6**  |   0    |   0    |   0    |   0    |   0   |   0   |  0  |
+## |  **7**  |   0    |   0    |   0    |   0    |   0   |   0   |  0  |
+## |  **8**  |   0    |   0    |   0    |   0    |   0   |   0   |  0  |
+## 
+## Table: Probability of specific score matrix (continued below)
+## 
+##  
+## 
+## | &nbsp;  |  7  |  8  |
+## |:-------:|:---:|:---:|
+## |  **0**  |  0  |  0  |
+## |  **1**  |  0  |  0  |
+## |  **2**  |  0  |  0  |
+## |  **3**  |  0  |  0  |
+## |  **4**  |  0  |  0  |
+## |  **5**  |  0  |  0  |
+## |  **6**  |  0  |  0  |
+## |  **7**  |  0  |  0  |
+## |  **8**  |  0  |  0  |
+{% endhighlight %}
  
 This has the away score on the top (as columns), and the home score along the side (as rows). Recall that we need to apply the &tau; function to this matrix, to account for low scoring games. Once that is done, we can sum the diagonal of the matrix to find the probability of a tie. The sum of the upper triangle is the probability of an away win, and the sum of the lower triangle is the home win.
  
@@ -307,38 +327,79 @@ makeStatsTable <- function(df) {
  
 We use it by calling `makeStatsTable` with the input being the season data.
 
-|Team                  | GP|  W| OTL|  L| ROW|   P|  GF|  GA| OT.Win.Percent|
-|:---------------------|--:|--:|---:|--:|---:|---:|---:|---:|--------------:|
-|New York Rangers      | 82| 53|   7| 22|  49| 113| 252| 192|      0.5882353|
-|Montreal Canadiens    | 82| 50|  10| 22|  43| 110| 221| 189|      0.6190476|
-|Anaheim Ducks         | 82| 51|   7| 24|  43| 109| 236| 226|      0.6666667|
-|St. Louis Blues       | 82| 51|   7| 24|  42| 109| 248| 201|      0.6666667|
-|Tampa Bay Lightning   | 82| 50|   8| 24|  47| 108| 262| 211|      0.3333333|
-|Nashville Predators   | 82| 47|  10| 25|  41| 104| 232| 208|      0.5000000|
-|Chicago Blackhawks    | 82| 48|   6| 28|  39| 102| 229| 189|      0.8000000|
-|Vancouver Canucks     | 82| 48|   5| 29|  42| 101| 242| 222|      0.7058824|
-|Washington Capitals   | 82| 45|  11| 26|  40| 101| 242| 203|      0.4000000|
-|New York Islanders    | 82| 47|   7| 28|  40| 101| 252| 230|      0.6190476|
-|Minnesota Wild        | 82| 46|   8| 28|  42| 100| 231| 201|      0.5000000|
-|Detroit Red Wings     | 82| 43|  14| 25|  39| 100| 235| 221|      0.4074074|
-|Ottawa Senators       | 82| 43|  13| 26|  37|  99| 238| 215|      0.4333333|
-|Winnipeg Jets         | 82| 43|  13| 26|  36|  99| 230| 210|      0.3928571|
-|Pittsburgh Penguins   | 82| 43|  12| 27|  39|  98| 221| 210|      0.3571429|
-|Calgary Flames        | 82| 45|   7| 30|  41|  97| 241| 216|      0.6500000|
-|Boston Bruins         | 82| 41|  14| 27|  37|  96| 213| 211|      0.4062500|
-|Los Angeles Kings     | 82| 40|  15| 27|  38|  95| 220| 205|      0.1153846|
-|Dallas Stars          | 82| 41|  10| 31|  37|  92| 261| 260|      0.5000000|
-|Florida Panthers      | 82| 38|  15| 29|  30|  91| 206| 223|      0.3214286|
-|Colorado Avalanche    | 82| 39|  12| 31|  29|  90| 219| 227|      0.4137931|
-|San Jose Sharks       | 82| 40|   9| 33|  36|  89| 228| 232|      0.3750000|
-|Columbus Blue Jackets | 82| 42|   5| 35|  33|  89| 236| 250|      0.8235294|
-|Philadelphia Flyers   | 82| 33|  18| 31|  30|  84| 215| 234|      0.2162162|
-|New Jersey Devils     | 82| 32|  14| 36|  27|  78| 181| 216|      0.2307692|
-|Carolina Hurricanes   | 82| 30|  11| 41|  25|  71| 188| 226|      0.3157895|
-|Toronto Maple Leafs   | 82| 30|   8| 44|  25|  68| 211| 262|      0.4000000|
-|Edmonton Oilers       | 82| 24|  14| 44|  19|  62| 198| 283|      0.2413793|
-|Arizona Coyotes       | 82| 24|   8| 50|  19|  56| 170| 272|      0.5555556|
-|Buffalo Sabres        | 82| 23|   8| 51|  15|  54| 161| 274|      0.5625000|
+{% highlight text %}
+## 
+## 
+## |         Team          |  GP  |  W  |  OTL  |  L  |  ROW  |  P  |  GF  |
+## |:---------------------:|:----:|:---:|:-----:|:---:|:-----:|:---:|:----:|
+## |   New York Rangers    |  82  | 53  |   7   | 22  |  49   | 113 | 252  |
+## |  Montreal Canadiens   |  82  | 50  |  10   | 22  |  43   | 110 | 221  |
+## |     Anaheim Ducks     |  82  | 51  |   7   | 24  |  43   | 109 | 236  |
+## |    St. Louis Blues    |  82  | 51  |   7   | 24  |  42   | 109 | 248  |
+## |  Tampa Bay Lightning  |  82  | 50  |   8   | 24  |  47   | 108 | 262  |
+## |  Nashville Predators  |  82  | 47  |  10   | 25  |  41   | 104 | 232  |
+## |  Chicago Blackhawks   |  82  | 48  |   6   | 28  |  39   | 102 | 229  |
+## |   Vancouver Canucks   |  82  | 48  |   5   | 29  |  42   | 101 | 242  |
+## |  Washington Capitals  |  82  | 45  |  11   | 26  |  40   | 101 | 242  |
+## |  New York Islanders   |  82  | 47  |   7   | 28  |  40   | 101 | 252  |
+## |    Minnesota Wild     |  82  | 46  |   8   | 28  |  42   | 100 | 231  |
+## |   Detroit Red Wings   |  82  | 43  |  14   | 25  |  39   | 100 | 235  |
+## |    Ottawa Senators    |  82  | 43  |  13   | 26  |  37   | 99  | 238  |
+## |     Winnipeg Jets     |  82  | 43  |  13   | 26  |  36   | 99  | 230  |
+## |  Pittsburgh Penguins  |  82  | 43  |  12   | 27  |  39   | 98  | 221  |
+## |    Calgary Flames     |  82  | 45  |   7   | 30  |  41   | 97  | 241  |
+## |     Boston Bruins     |  82  | 41  |  14   | 27  |  37   | 96  | 213  |
+## |   Los Angeles Kings   |  82  | 40  |  15   | 27  |  38   | 95  | 220  |
+## |     Dallas Stars      |  82  | 41  |  10   | 31  |  37   | 92  | 261  |
+## |   Florida Panthers    |  82  | 38  |  15   | 29  |  30   | 91  | 206  |
+## |  Colorado Avalanche   |  82  | 39  |  12   | 31  |  29   | 90  | 219  |
+## |    San Jose Sharks    |  82  | 40  |   9   | 33  |  36   | 89  | 228  |
+## | Columbus Blue Jackets |  82  | 42  |   5   | 35  |  33   | 89  | 236  |
+## |  Philadelphia Flyers  |  82  | 33  |  18   | 31  |  30   | 84  | 215  |
+## |   New Jersey Devils   |  82  | 32  |  14   | 36  |  27   | 78  | 181  |
+## |  Carolina Hurricanes  |  82  | 30  |  11   | 41  |  25   | 71  | 188  |
+## |  Toronto Maple Leafs  |  82  | 30  |   8   | 44  |  25   | 68  | 211  |
+## |    Edmonton Oilers    |  82  | 24  |  14   | 44  |  19   | 62  | 198  |
+## |    Arizona Coyotes    |  82  | 24  |   8   | 50  |  19   | 56  | 170  |
+## |    Buffalo Sabres     |  82  | 23  |   8   | 51  |  15   | 54  | 161  |
+## 
+## Table: Table of statistics in 2015-2016 season to today. (continued below)
+## 
+##  
+## 
+## |  GA  |  OT.Win.Percent  |
+## |:----:|:----------------:|
+## | 192  |      0.5882      |
+## | 189  |      0.619       |
+## | 226  |      0.6667      |
+## | 201  |      0.6667      |
+## | 211  |      0.3333      |
+## | 208  |       0.5        |
+## | 189  |       0.8        |
+## | 222  |      0.7059      |
+## | 203  |       0.4        |
+## | 230  |      0.619       |
+## | 201  |       0.5        |
+## | 221  |      0.4074      |
+## | 215  |      0.4333      |
+## | 210  |      0.3929      |
+## | 210  |      0.3571      |
+## | 216  |       0.65       |
+## | 211  |      0.4062      |
+## | 205  |      0.1154      |
+## | 260  |       0.5        |
+## | 223  |      0.3214      |
+## | 227  |      0.4138      |
+## | 232  |      0.375       |
+## | 250  |      0.8235      |
+## | 234  |      0.2162      |
+## | 216  |      0.2308      |
+## | 226  |      0.3158      |
+## | 262  |       0.4        |
+## | 283  |      0.2414      |
+## | 272  |      0.5556      |
+## | 274  |      0.5625      |
+{% endhighlight %}
  
 We'll feed it into a log5 function, and use that instead of a factor of 0.5 to determine OT winners. As well, it's trivial to determine that on average, the number of games ending in shootout is slightly higher than the number ending in overtime.
  
