@@ -223,12 +223,14 @@ Thus, we expect Montreal to score `r lambda` goals and Toronto to score `r mu` g
 
 Using this knowledge, we can create a probability matrix of Home and Away goals' Poisson probability. Using &lambda; and &mu;, `probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))`, and a maximum number of goals per team of 8:
 
-```{r kable, echo=FALSE}
+```{r pander, echo=FALSE}
 maxgoal=8
 probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))
 rownames(probability_matrix)<-colnames(probability_matrix)<-c(0:8)
-library(knitr)
-kable(probability_matrix,digits=5, padding=1)
+library(pander)
+panderOptions('round', 4)
+panderOptions('keep.trailing.zeros',TRUE)
+pandoc.table(probability_matrix,style="rmarkdown",caption="Probability of specific score matrix")
 ```
 
 This has the away score on the top (as columns), and the home score along the side (as rows). Recall that we need to apply the &tau; function to this matrix, to account for low scoring games. Once that is done, we can sum the diagonal of the matrix to find the probability of a tie. The sum of the upper triangle is the probability of an away win, and the sum of the lower triangle is the home win.
@@ -446,7 +448,7 @@ makeStatsTable<-function(df) {
 We use it by calling `makeStatsTable` with the input being the season data.
 ```{r echo=FALSE}
 stats2015<-makeStatsTable(nhl2015)
-kable(stats2015[c(1:9,12)])
+pandoc.table(stats2015[c(1:9,12)],style="rmarkdown",caption="Table of statistics in 2015-2016 season to today.")
 ```
 
 We'll feed it into a log5 function, and use that instead of a factor of 0.5 to determine OT winners. As well, it's trivial to determine that on average, the number of games ending in shootout is slightly higher than the number ending in overtime.
