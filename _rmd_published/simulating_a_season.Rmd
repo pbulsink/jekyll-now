@@ -486,10 +486,11 @@ simulateSeason<-function(res, schedule, stats, past_results, n=10000, maxgoal=8)
 ```
 
 For the record, here's where teams are now (March 20, 2016):
-```{r current_standings, echo=FALSE}
+```{r current_standings, echo=FALSE, results="asis"}
 library(pander)
 panderOptions('round',2)
 panderOptions('keep.trailing.zeros', TRUE)
+panderOptions('table.split.table',Inf)
 pandoc.table(nhl_2016_stats[,1:10], style="rmarkdown", caption="Current team standings")
 ```
 
@@ -500,7 +501,7 @@ res_2016<-doDCPrediction(nhl2016)
 
 If we run a preiction, we can get a nice stats table, as we'd find on the NHL website. Note that some games were cancelled for a snowstorm in January and may not have been rescheduled yet, so their teams may have less games played.
 
-```{r predict_remainder}
+```{r predict_remainder, results="asis"}
 remainder_2016<-predictRemainderOfSeason(res_2016, future_games, nhl_2016_stats)
 all_results<-rbind(nhl2016, remainder_2016)
 stats_sim_2016<-makeStatsTable(all_results)
@@ -509,7 +510,7 @@ pandoc.table(stats_sim_2016[,1:10], style="rmarkdown", caption="Predicted standi
 
 But, while doing that once is cool, we need to do that over and over again to really get a picture of the chance each team has of making the playoffs by the end of the season. This we'll do with `n=1000`, to save time.
 
-```{r predict_seasons}
+```{r predict_seasons, results="asis"}
 nhl_2016_predicted_standings<-simulateSeason(res_2016, future_games, nhl_2016_stats, past_results=nhl2016, n=1000)
 pandoc.table(nhl_2016_predicted_standings, style="rmarkdown", caption="Predicted position at end of season after 1000 simulations")
 ```
@@ -574,7 +575,7 @@ All we need to do is feed the standings table from the predictions to the `getCo
 
 From our calculations, we can see that the Eastern Conference standings are likely as follows:
 
-```{r echo=FALSE}
+```{r echo=FALSE, results="asis"}
 east_standings<-getConferenceStandings(nhl_2016_predicted_standings, "East")
 pandoc.table(east_standings, style="rmarkdown", caption="Predicted Eastern Conference standings")
 east_in<-rownames(east_standings)[8]
@@ -585,7 +586,7 @@ So, the `r east_in` likely squeak into the playoffs, while `r east_out` just mis
 
 Similarly, the West standings would look like this:
 
-```{r echo=FALSE}
+```{r echo=FALSE, results="asis"}
 west_standings<-getConferenceStandings(nhl_2016_predicted_standings, "West")
 pandoc.table(west_standings, style="rmarkdown", caption="Predicted Western Conference standings")
 ```
@@ -673,7 +674,7 @@ The interesting things are: chances of president's trophy and chances to make pl
 
 We can get this info quite simply from the above code:
 
-```{r sim_season_mean}
+```{r sim_season_mean, results="asis"}
 results<-point_predict(res_2016, future_games, nhl_2016_stats, past_results=nhl2016, n=1000)
 pandoc.table(results[,c(1,3,5)], style="rmarkdown", caption="Chances of playoff and President's Trophy per team")
 ```

@@ -223,13 +223,14 @@ Thus, we expect Montreal to score `r lambda` goals and Toronto to score `r mu` g
 
 Using this knowledge, we can create a probability matrix of Home and Away goals' Poisson probability. Using &lambda; and &mu;, `probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))`, and a maximum number of goals per team of 8:
 
-```{r pander, echo=FALSE}
+```{r pander, echo=FALSE, results="asis"}
 maxgoal=8
 probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))
 rownames(probability_matrix)<-colnames(probability_matrix)<-c(0:8)
 library(pander)
 panderOptions('round', 4)
 panderOptions('keep.trailing.zeros',TRUE)
+panderOptions('table.split.table',Inf)
 pandoc.table(probability_matrix,style="rmarkdown",caption="Probability of specific score matrix")
 ```
 
@@ -446,7 +447,7 @@ makeStatsTable<-function(df) {
 ```
 
 We use it by calling `makeStatsTable` with the input being the season data.
-```{r echo=FALSE}
+```{r echo=FALSE, results="asis"}
 stats2015<-makeStatsTable(nhl2015)
 pandoc.table(stats2015[c(1:9,12)],style="rmarkdown",caption="Table of statistics in 2015-2016 season to today.")
 ```
