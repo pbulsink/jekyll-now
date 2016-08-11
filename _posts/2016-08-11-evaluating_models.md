@@ -32,8 +32,8 @@ The RPS formula takes a matrix of probabilities and a result, and returns the sc
  
 where: 
 *r* is the number of potential outcomes (in our case, 3), 
-*p<sub>j</sub>* is the pobability of outcome at position *j*, 
-and *e<sub>j</sub>* is the actual outcome at that position. 
+*p j* is the pobability of outcome at position *j*, 
+and *e j* is the actual outcome at that position. 
  
 Our example looks as this:
  
