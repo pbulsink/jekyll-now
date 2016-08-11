@@ -28,7 +28,7 @@ library(verification)  #This requires the latest version of R to properly load.
  
 The RPS formula takes a matrix of probabilities and a result, and returns the score based on how close the model was. For example, if team A (away) was given a 0.6 chance of winning, team B (home) a 0.25, and a draw of 0.15, then the probability set is *{A,D,H} = {0.6,0.15,0.25}*. If Team B wins, then the result is 3, the third column. The formula for RPS is: 
  
-[RPS Equation]({{ site.baseurl }}/images/rps_equation.png)
+![RPS Equation]({{ site.baseurl }}/images/rps_equation.png)
  
 where: 
 *r* is the number of potential outcomes (in our case, 3), 
@@ -37,7 +37,7 @@ and *e j* is the actual outcome at that position.
  
 Our example looks as this:
  
-[]({{ site.baseurl }}/images/rps_equation_part1.png) | []({{ site.baseurl }}/images/rps_equation_part2.png) | RPS
+![]({{ site.baseurl }}/images/rps_equation_part1.png) | ![]({{ site.baseurl }}/images/rps_equation_part2.png) | RPS
 ---|---|---
 *{0.6,0.75(,1)}* | *{0,0(,1)}* | *0.46125*
  
