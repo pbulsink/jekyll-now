@@ -75,8 +75,8 @@ getAndPrepAllData<-function(year_list=c(2006, 2007, 2008, 2009,2010,2011,2012,20
     return(df)
 }
 
-nhl_all<-getAndPrepAllData()
-nhl2015<-getAndPrepAllData(year_list = c(2015))
+#nhl_all<-getAndPrepAllData()
+#nhl2015<-getAndPrepAllData(year_list = c(2015))
 
 tau <- Vectorize(function(xx, yy, lambda, mu, rho){
     if (xx == 0 & yy == 0){return(1 - (lambda*mu*rho))
@@ -344,8 +344,8 @@ makeStatsTable<-function(df) {
     return(tmpTable)
 }
 
-stats2015<-makeStatsTable(nhl2015)
-stats_all<-makeStatsTable(nhl_all)
+#stats2015<-makeStatsTable(nhl2015)
+#stats_all<-makeStatsTable(nhl_all)
 
 buildStandingsTable<-function(stats, standings=NA){
     if (is.na(standings)){
@@ -402,9 +402,9 @@ nhlFutureGames<-function(df){
     return(df)
 }
 
-future_games<-nhlFutureGames(read.csv('./_data/20152016.csv'))
+#future_games<-nhlFutureGames(read.csv('./_data/20152016.csv'))
 
-nhl2016<-nhlDataPrep(read.csv('./_data/20152016.csv'))
+#nhl2016<-nhlDataPrep(read.csv('./_data/20152016.csv'))
 #nhl_2016_stats<-makeStatsTable(nhl2016)
 
 buildStandingsTable<-function(stats, standings=NA){
@@ -525,19 +525,28 @@ getConferenceStandings<-function(standings, conference){
 
 We'll start by evaluating the models for 'RPS' (Rank Probability Score). There's a great discussion of why this is important by Anthony Constantinou that you can read [here (pdf)](http://constantinou.info/downloads/papers/solvingTheProblem.pdf). The great thing is, the RPS calculation is already available in R from the `verification` package.
 
-```{r warnings=TRUE}
+```{r}
 library(verification) #This requires the latest version of R to properly load.
 ```
 
-The RPS formula takes a matrix of probabilities and a result, and returns the score based on how close the model was. For example, if team A (away) was given a 0.6 chance of winning, team B (home) a 0.25, and a draw of 0.15, then the probability set is <span>${A,D,H} = {0.6,0.15,0.25}$</span>. If Team B wins, then the result is 3, the third column. The formula for RPS is: <span>$$ \mathrm{RPS}=\dfrac{1}{r-1}\sum\limits_{i=1}^{r-1}\left(\sum\limits_{j=1}^{i}(p_j-e_j\right)^2 $$</span>, where <span>$r$</span> is the number of potential outcomes (in our case, 3), <span>$p_j$</span> is the pobability of outcome at position <span>$j$</span>, and <span>$e_j$</span> is the actual outcome at that position. Our example thus looks as this:
+The RPS formula takes a matrix of probabilities and a result, and returns the score based on how close the model was. For example, if team A (away) was given a 0.6 chance of winning, team B (home) a 0.25, and a draw of 0.15, then the probability set is *{A,D,H} = {0.6,0.15,0.25}*. If Team B wins, then the result is 3, the third column. The formula for RPS is: 
 
-<div>
-$\sum\limits_{i=1,2}^{(r=3-)1}(p_j)$ | $\sum\limits_{i=1,2}^{(r=3-)1}(e_j)$ | RPS
+[RPS Equation]({{ site.baseurl }}/images/rps_equation.png)
+
+where: 
+*r* is the number of potential outcomes (in our case, 3), 
+*p<sub>j</sub>* is the pobability of outcome at position *j*, 
+and *e<sub>j</sub>* is the actual outcome at that position. 
+
+Our example looks as this:
+
+[]({{ site.baseurl }}/images/rps_equation_part1.png) | []({{ site.baseurl }}/images/rps_equation_part2.png) | RPS
 ---|---|---
-${0.6,0.75}$ | ${0,0}$|$0.46125$
-</div>
+*{0.6,0.75(,1)}* | *{0,0(,1)}* | *0.46125*
 
-A smaller RPS value is better, so when we get a 'home' win with <span>$RPS = 0.46125$</span>, or an away win with <span>$RPS = 0.11125$</span>, we can say that the model 'performed better' with the prediction of an away win. There are more examples of performance in the above linked paper by Constantinou. 
+Normally, the summation sets don't include the *1*, that value is implied.
+
+A smaller RPS value is better, so when we get a 'home' win with *RPS = 0.46125*, or an away win with *RPS = 0.11125*, we can say that the model 'performed better' with the prediction of an away win. There are more examples of performance in the above linked paper by Constantinou. 
 
 To evaluate each model, let's compare the results of 2014-2015 season to our predictions. We'll start with training the model with all the games up to December 31 (approximately the first half of the season), and compare the predicted results to the actuals from then to the end of the season. We can experimentally determine a better value for &xi; (see the time-weight dependance post) than the 0.005 we've tossed around. 
 
@@ -675,8 +684,8 @@ Method|RPS
 ---|---
 Short Training|`r rps_2015$rps`
 Long Training|`r rps_all$rps`
-Short Training (time weighted)|`opt_xi$objective["rps"]`
-Long Training (time weighted)|`opt_xi_long$objective["rps"]`
+Short Training (time weighted)|`r opt_xi$objective["rps"]`
+Long Training (time weighted)|`r opt_xi_long$objective["rps"]`
 Home Wins Always|`r rps_home`
 Even Odds (No OT)|`r rps_even_no_ot`
 Even Odds (Plus OT)|`r rps_even`
