@@ -36,10 +36,12 @@ where:
 and *e j* is the actual outcome at that position. 
  
 Our example looks as this:
- 
-![]({{ site.baseurl }}/images/rps_equation_part1.png) | ![]({{ site.baseurl }}/images/rps_equation_part2.png) | RPS
----|---|---
-*{0.6,0.75(,1)}* | *{0,0(,1)}* | *0.46125*
+
+Component | Value 
+:---|---:
+![]({{ site.baseurl }}/images/rps_equation_part1.png) | *{0.6,0.75(,1)}* 
+![]({{ site.baseurl }}/images/rps_equation_part2.png) | *{0,0(,1)}* 
+RPS | *0.46125*
  
 Normally, the summation sets don't include the *1*, that value is implied.
  

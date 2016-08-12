@@ -9,15 +9,22 @@
 th {
     background-color: #4CAF50;
     color: white;
+    padding:0 15px 0 15px;
 }
 
 //adding spacing
-th, td {
-    padding: 15px;
+td {    
+    display: block;
+    float: left;
+    padding:0 15px 0 15px;
 }
 
 tr:nth-child(even) {
 	background-color: #f2f2f2
 }
 
-//add large tables in a <div style="overflow-x:auto;"> </div> environment for side-to-side scrolling
+//add large tables in a .lgtable environment for side-to-side scrolling
+
+.lgtable{
+    overflow-x:auto;
+}

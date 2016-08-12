@@ -142,9 +142,7 @@ simulateSeason <- function(res, schedule, stats, past_results, n = 10000, maxgoa
     return(standings)
 }
 {% endhighlight %}
- 
-<div style="overflow-x:auto;">
- 
+  
 For the record, here's where teams are now (March 20, 2016):
 
 |         Team          |  GP  |  W  |  OTL  |  L  |  ROW  |  P  |  GF  |  GA  |  DIFF  |
@@ -179,8 +177,7 @@ For the record, here's where teams are now (March 20, 2016):
 |    Edmonton Oilers    |  74  | 29  |   7   | 38  |  25   | 65  | 179  | 216  |  -37   |
 |     Winnipeg Jets     |  71  | 29  |   5   | 37  |  27   | 63  | 182  | 213  |  -31   |
 |  Toronto Maple Leafs  |  71  | 25  |  11   | 35  |  19   | 61  | 169  | 207  |  -38   |
-
-</div>
+{:.lgtable}
 
 Table: Current team standings
  
@@ -200,7 +197,6 @@ stats_sim_2016 <- makeStatsTable(all_results)
 pandoc.table(stats_sim_2016[, 1:10], style = "rmarkdown", caption = "Predicted standings at end of season")
 {% endhighlight %}
 
-<div style="overflow-x:auto;">
 
 |         Team          |  GP  |  W  |  OTL  |  L  |  ROW  |  P  |  GF  |  GA  |  DIFF  |
 |:---------------------:|:----:|:---:|:-----:|:---:|:-----:|:---:|:----:|:----:|:------:|
@@ -234,8 +230,7 @@ pandoc.table(stats_sim_2016[, 1:10], style = "rmarkdown", caption = "Predicted s
 |  Toronto Maple Leafs  |  82  | 30  |  14   | 38  |  24   | 74  | 181  | 221  |  -40   |
 |    Edmonton Oilers    |  82  | 32  |   9   | 41  |  28   | 73  | 187  | 226  |  -39   |
 |     Winnipeg Jets     |  82  | 33  |   6   | 43  |  30   | 72  | 189  | 226  |  -37   |
-
-</div>
+{:.lgtable}
 
 Table: Predicted standings at end of season
  
@@ -248,7 +243,6 @@ nhl_2016_predicted_standings <- simulateSeason(res_2016, future_games, nhl_2016_
 pandoc.table(nhl_2016_predicted_standings, style = "rmarkdown", caption = "Predicted position at end of season after 1000 simulations")
 {% endhighlight %}
 
-<div style="overflow-x:auto;">
 
 |           &nbsp;            |  1   |  2  |  3  |  4  |  5  |  6  |  7  |  8  |  9  |  10  |  11  |  12  |  13  |  14  |  15  |  16  |  17  |  18  |  19  |  20  |  21  |  22  |  23  |  24  |  25  |  26  |  27  |  28  |  29  |  30  |
 |:---------------------------:|:----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
@@ -282,8 +276,8 @@ pandoc.table(nhl_2016_predicted_standings, style = "rmarkdown", caption = "Predi
 |    **Vancouver Canucks**    |  0   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  42  | 201  | 198  | 169  | 122  | 117  |  87  |  64  |
 |   **Washington Capitals**   | 1000 |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |
 |      **Winnipeg Jets**      |  0   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  15  |  49  | 122  | 154  | 199  | 222  | 239  |
+{:.lgtable}
 
-</div>
 Table: Predicted position at end of season after 1000 simulations
  
 But, all of the results come out together in the standings table, but playoff positions are ranked by conference, and division. Each division's top 3 teams make the playoffs, as well as two wild card teams from each conference. We'll set up the divisions, confereces, and playoffs here.
@@ -367,6 +361,7 @@ From our calculations, we can see that the Eastern Conference standings are like
 |  **Columbus Blue Jackets**  |  0   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  42  | 246  | 200  | 149  | 147  | 109  |  63  |  44  |
 |     **Buffalo Sabres**      |  0   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  27  | 221  | 241  | 188  | 139  |  99  |  53  |  32  |
 |   **Toronto Maple Leafs**   |  0   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  3   |  19  |  63  |  96  | 145  | 152  | 226  | 296  |
+{:.lgtable}
 
 Table: Predicted Eastern Conference standings
  
@@ -391,6 +386,7 @@ Similarly, the West standings would look like this:
 |   **Vancouver Canucks**   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  42  | 201  | 198  | 169  | 122  | 117  |  87  |  64  |
 |    **Edmonton Oilers**    |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  5   |  33  |  69  | 108  | 143  | 191  | 231  | 220  |
 |     **Winnipeg Jets**     |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  15  |  49  | 122  | 154  | 199  | 222  | 239  |
+{:.lgtable}
 
 Table: Predicted Western Conference standings
  
