@@ -244,9 +244,7 @@ nhl_2016_predicted_standings <- simulateSeason(res_2016, future_games, nhl_2016_
 pandoc.table(nhl_2016_predicted_standings, style = "rmarkdown", caption = "Predicted position at end of season after 1000 simulations")
 {% endhighlight %}
 
-
-{::nomarkdown}<div class="lgtable">{:/}
-
+{:.lgtable}
 |           &nbsp;            |  1   |  2  |  3  |  4  |  5  |  6  |  7  |  8  |  9  |  10  |  11  |  12  |  13  |  14  |  15  |  16  |  17  |  18  |  19  |  20  |  21  |  22  |  23  |  24  |  25  |  26  |  27  |  28  |  29  |  30  |
 |:---------------------------:|:----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 |      **Anaheim Ducks**      |  0   |  1  |  2  |  5  |  4  |  7  | 23  | 37  | 81  | 116  | 143  | 189  | 202  | 137  |  46  |  6   |  1   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |
@@ -280,7 +278,6 @@ pandoc.table(nhl_2016_predicted_standings, style = "rmarkdown", caption = "Predi
 |   **Washington Capitals**   | 1000 |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |
 |      **Winnipeg Jets**      |  0   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  15  |  49  | 122  | 154  | 199  | 222  | 239  |
 
-{::nomarkdown}</div>{:/}
 
 Table: Predicted position at end of season after 1000 simulations
  
