@@ -8,17 +8,18 @@
 table{
     border-collapse: collapse;
     border-spacing: 0;
+    width: 100%;
     //border:2px solid #ff0000;
 }
 
 th{
-    border:3px solid transparent;
+    border:10px solid transparent;
     background-color: #4CAF50;
     color: white;
 }
 
 td{
-    border:3px solid transparent;
+    border:10px solid transparent;
     text-align: left;
     //padding:0 15px 0 15px;
 }
