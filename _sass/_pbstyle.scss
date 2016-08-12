@@ -30,7 +30,7 @@ tr:nth-child(even) {
 
 //add large tables in a .lgtable environment for side-to-side scrolling
 
-lgtable > table{
+.lgtable > table{
     overflow-x:auto;
 }
 

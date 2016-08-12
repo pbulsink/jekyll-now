@@ -145,6 +145,7 @@ simulateSeason <- function(res, schedule, stats, past_results, n = 10000, maxgoa
   
 For the record, here's where teams are now (March 20, 2016):
 
+
 {:.lgtable}
 |         Team          |  GP  |  W  |  OTL  |  L  |  ROW  |  P  |  GF  |  GA  |  DIFF  |
 |:---------------------:|:----:|:---:|:-----:|:---:|:-----:|:---:|:----:|:----:|:------:|
@@ -178,7 +179,6 @@ For the record, here's where teams are now (March 20, 2016):
 |    Edmonton Oilers    |  74  | 29  |   7   | 38  |  25   | 65  | 179  | 216  |  -37   |
 |     Winnipeg Jets     |  71  | 29  |   5   | 37  |  27   | 63  | 182  | 213  |  -31   |
 |  Toronto Maple Leafs  |  71  | 25  |  11   | 35  |  19   | 61  | 169  | 207  |  -38   |
-
 
 Table: Current team standings
  
@@ -244,7 +244,9 @@ nhl_2016_predicted_standings <- simulateSeason(res_2016, future_games, nhl_2016_
 pandoc.table(nhl_2016_predicted_standings, style = "rmarkdown", caption = "Predicted position at end of season after 1000 simulations")
 {% endhighlight %}
 
-{:.lgtable}
+
+{::nomarkdown}<div class="lgtable">{:/}
+
 |           &nbsp;            |  1   |  2  |  3  |  4  |  5  |  6  |  7  |  8  |  9  |  10  |  11  |  12  |  13  |  14  |  15  |  16  |  17  |  18  |  19  |  20  |  21  |  22  |  23  |  24  |  25  |  26  |  27  |  28  |  29  |  30  |
 |:---------------------------:|:----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 |      **Anaheim Ducks**      |  0   |  1  |  2  |  5  |  4  |  7  | 23  | 37  | 81  | 116  | 143  | 189  | 202  | 137  |  46  |  6   |  1   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |
@@ -278,6 +280,7 @@ pandoc.table(nhl_2016_predicted_standings, style = "rmarkdown", caption = "Predi
 |   **Washington Capitals**   | 1000 |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |
 |      **Winnipeg Jets**      |  0   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  15  |  49  | 122  | 154  | 199  | 222  | 239  |
 
+{::nomarkdown}</div>{:/}
 
 Table: Predicted position at end of season after 1000 simulations
  
