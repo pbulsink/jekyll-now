@@ -13,7 +13,7 @@ th {
 
 //adding spacing
 td {    
-    display: block;
+    display: table;
     float: left;
     padding:0 15px 0 15px;
 }
@@ -24,6 +24,6 @@ tr:nth-child(even) {
 
 //add large tables in a .lgtable environment for side-to-side scrolling
 
-.lgtable{
+.lgtable > table{
     overflow-x:auto;
 }
