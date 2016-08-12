@@ -182,10 +182,9 @@ Short Training|0.250604
 Long Training|0.2441252
 Short Training (time weighted)|0.248933
 Long Training (time weighted)|0.2407655
-Home Wins Always|0.4836795, -1.0495303, 0.2359953
-Even Odds (No OT)|0.25, -0.0593431, 0.2359953
-Even Odds (Plus OT)|0.2365579, -0.0023838, 0.2359953
-Randomly Generated Odds|0.2717466, -0.1514915, 0.2359953
-
-
-Looks like there's lots of room for improvement!
+Home Wins Always|0.4836795
+Even Odds (No OT)|0.25
+Even Odds (Plus OT)|0.2365579
+Randomly Generated Odds|0.2717466
+ 
+Looks like there's some work to do yet on improving models to be better than a weighted coin flip!

@@ -143,6 +143,8 @@ simulateSeason <- function(res, schedule, stats, past_results, n = 10000, maxgoa
 }
 {% endhighlight %}
  
+<div style="overflow-x:auto;">
+ 
 For the record, here's where teams are now (March 20, 2016):
 
 |         Team          |  GP  |  W  |  OTL  |  L  |  ROW  |  P  |  GF  |  GA  |  DIFF  |
@@ -178,6 +180,8 @@ For the record, here's where teams are now (March 20, 2016):
 |     Winnipeg Jets     |  71  | 29  |   5   | 37  |  27   | 63  | 182  | 213  |  -31   |
 |  Toronto Maple Leafs  |  71  | 25  |  11   | 35  |  19   | 61  | 169  | 207  |  -38   |
 
+</div>
+
 Table: Current team standings
  
 We can predict the season's remaining games, to figure out what chances our favourite team has of finishing in any position! We need to get the DC parametsrs, as per usual. We'll start with the nhl2016 data only, with no time weighting.
@@ -196,7 +200,7 @@ stats_sim_2016 <- makeStatsTable(all_results)
 pandoc.table(stats_sim_2016[, 1:10], style = "rmarkdown", caption = "Predicted standings at end of season")
 {% endhighlight %}
 
-
+<div style="overflow-x:auto;">
 
 |         Team          |  GP  |  W  |  OTL  |  L  |  ROW  |  P  |  GF  |  GA  |  DIFF  |
 |:---------------------:|:----:|:---:|:-----:|:---:|:-----:|:---:|:----:|:----:|:------:|
@@ -231,6 +235,8 @@ pandoc.table(stats_sim_2016[, 1:10], style = "rmarkdown", caption = "Predicted s
 |    Edmonton Oilers    |  82  | 32  |   9   | 41  |  28   | 73  | 187  | 226  |  -39   |
 |     Winnipeg Jets     |  82  | 33  |   6   | 43  |  30   | 72  | 189  | 226  |  -37   |
 
+</div>
+
 Table: Predicted standings at end of season
  
 But, while doing that once is cool, we need to do that over and over again to really get a picture of the chance each team has of making the playoffs by the end of the season. This we'll do with `n=1000`, to save time.
@@ -242,7 +248,7 @@ nhl_2016_predicted_standings <- simulateSeason(res_2016, future_games, nhl_2016_
 pandoc.table(nhl_2016_predicted_standings, style = "rmarkdown", caption = "Predicted position at end of season after 1000 simulations")
 {% endhighlight %}
 
-
+<div style="overflow-x:auto;">
 
 |           &nbsp;            |  1   |  2  |  3  |  4  |  5  |  6  |  7  |  8  |  9  |  10  |  11  |  12  |  13  |  14  |  15  |  16  |  17  |  18  |  19  |  20  |  21  |  22  |  23  |  24  |  25  |  26  |  27  |  28  |  29  |  30  |
 |:---------------------------:|:----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
@@ -277,6 +283,7 @@ pandoc.table(nhl_2016_predicted_standings, style = "rmarkdown", caption = "Predi
 |   **Washington Capitals**   | 1000 |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |
 |      **Winnipeg Jets**      |  0   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  0   |  15  |  49  | 122  | 154  | 199  | 222  | 239  |
 
+</div>
 Table: Predicted position at end of season after 1000 simulations
  
 But, all of the results come out together in the standings table, but playoff positions are ranked by conference, and division. Each division's top 3 teams make the playoffs, as well as two wild card teams from each conference. We'll set up the divisions, confereces, and playoffs here.

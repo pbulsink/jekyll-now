@@ -1,0 +1,23 @@
+
+//
+// pbulsink extra styles
+//
+
+// table fixing
+
+//fancy heads
+th {
+    background-color: #4CAF50;
+    color: white;
+}
+
+//adding spacing
+th, td {
+    padding: 15px;
+}
+
+tr:nth-child(even) {
+	background-color: #f2f2f2
+}
+
+//add large tables in a <div style="overflow-x:auto;"> </div> environment for side-to-side scrolling
