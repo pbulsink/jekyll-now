@@ -14,6 +14,7 @@ When making a prediction engine, it's always fun to see what next season looks l
 This will hopefully eventually maybe become a daily-updating model, that watches teams as they play though the season to see what happens. The cool thing would be to have available the effect of different scenarios, such as winning 'tonight's' game, or someone elses' fate depending on your own results. These are maybe eventual projects.
 
 All the code I'm using is available in earlier posts, so all you need to know is:
+- There are no corrections for draft picks, trades, retirements, or coaching changes.
 - For the time dependant Dixon-Coles, I'm using data for the past 10 years only, including playoffs, with a &xi; value of 0.0191464. 
 - For the quick Dixon-Coles, I'm using only 2 years of data. 
 - Each team has 0.5 chance of winning if a game goes to overtime.
@@ -24,7 +25,7 @@ source("./_rscripts/dcDataPrep.R")
 source("./_rscripts/fastDC.R")
 source("./_rscripts/gameAndSeasonPredicting.R")
 source("./_rscripts/timeWeightedDC.R")
-source("./_rscripts/plotPedictions.R")
+source("./_rscripts/plotPredictions.R")
 
 nhl_all<-as.data.frame(readRDS("./_data/hockeyData.Rds"))
 nhl_past_ten<-nhlDataPrep(nhl_all[nhl_all$Date>as.Date("2006-07-01"),])
@@ -45,7 +46,7 @@ f_stats<-makeStatsTable(future_games)
 f_stats$OT.Win.Percent<-rep(0.5)
 
 nhl_2017_ten<-simulateSeason(res_ten, future_games, past_results=NULL, f_stats, n=1000)
-#nhl_2017_two<-simulateSeason(res_two, future_games, past_results=NULL, f_stats, n=1000)
+nhl_2017_two<-simulateSeason(res_two, future_games, past_results=NULL, f_stats, n=1000, m=fast_m)
 
 ```
 
@@ -54,5 +55,5 @@ plotPredictions(nhl_2017_ten, title="Results of Time-Weighted DC Prediction of 2
 ```
 
 ```{r prediction2017_two, echo=FALSE}
-#plotPredictions(nhl_2017_two, title="Results of Fast DC Prediction of 2016-2017", n_sims=1000)
+plotPredictions(nhl_2017_two, title="Results of Fast DC Prediction of 2016-2017", n_sims=1000)
 ```

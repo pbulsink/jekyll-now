@@ -20,13 +20,16 @@ log5OTPredictor<-function(stats, home, away){
     }
 }
 
-buildScoreMatrix<-function(res, home, away, maxgoal=8){
+buildScoreMatrix<-function(res, home, away, maxgoal=8, m=NULL){
     if (!is.null(m)){
         # Expected goals home
         lambda <- predict(m, data.frame(Home=1, Team=home, Opponent=away), type='response')
 
         # Expected goals away
         mu <- predict(m, data.frame(Home=0, Team=away, Opponent=home), type='response')
+
+        #rho
+        rho <- res$par
     }
     else {
         attack.home<-paste("Attack",home,sep=".")
@@ -38,10 +41,11 @@ buildScoreMatrix<-function(res, home, away, maxgoal=8){
         lambda <- exp(res$par['HOME'] + res$par[attack.home] + res$par[defence.away])
         # Expected goals away
         mu <- exp(res$par[attack.away] + res$par[defence.home])
+        rho <- res$par['RHO']
     }
     probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))
 
-    scaling_matrix <- matrix(tau(c(0,1,0,1), c(0,0,1,1), lambda, mu, res$par['RHO']), nrow=2)
+    scaling_matrix <- matrix(tau(c(0,1,0,1), c(0,0,1,1), lambda, mu, rho), nrow=2)
     probability_matrix[1:2, 1:2] <- probability_matrix[1:2, 1:2] * scaling_matrix
 
     pmatrix<-matrix(nrow=nrow(probability_matrix), ncol=ncol(probability_matrix))
@@ -57,7 +61,7 @@ buildScoreMatrix<-function(res, home, away, maxgoal=8){
 
 predictOneGame<-function(pmatrix,stats,home,away){
     random<-runif(1)
-    #Ensure random isn't higher than matrix sum (less than indexed).
+    #Ensure random isn't higher than matrix sum (calculation at less than indexed).
     while (random > pmatrix[nrow(pmatrix), ncol(pmatrix)]){
         random<-runif(1)
     }
@@ -164,36 +168,8 @@ buildStandingsTable<-function(stats, standings=NA){
     return(standings)
 }
 
-buildScoreMatrix<-function(res, home, away, maxgoal=8){
-    attack.home<-paste("Attack",home,sep=".")
-    attack.away<-paste("Attack",away,sep=".")
-    defence.home<-paste("Defence",home,sep=".")
-    defence.away<-paste("Defence",away,sep=".")
-
-    # Expected goals home
-    lambda <- exp(res$par['HOME'] + res$par[attack.home] + res$par[defence.away])
-    # Expected goals away
-    mu <- exp(res$par[attack.away] + res$par[defence.home])
-
-    probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))
-
-    scaling_matrix <- matrix(tau(c(0,1,0,1), c(0,0,1,1), lambda, mu, res$par['RHO']), nrow=2)
-    probability_matrix[1:2, 1:2] <- probability_matrix[1:2, 1:2] * scaling_matrix
-
-    pmatrix<-matrix(nrow=nrow(probability_matrix), ncol=ncol(probability_matrix))
-    #sum of probabilities matrix
-    current_p<-0
-    for (i in 1:ncol(pmatrix)){
-        for (j in 1:nrow(pmatrix)){
-            pmatrix[j,i]<-current_p
-            current_p<-current_p + probability_matrix[j,i]
-        }
-    }
-    return(pmatrix)
-}
-
-predictScore<-function(res, stats, home, away, maxgoal=8){
-    return(predictOneGame(buildScoreMatrix(res, home, away, maxgoal=maxgoal), stats=stats, home, away))
+predictScore<-function(res, stats, home, away, maxgoal=8, m=NULL){
+    return(predictOneGame(buildScoreMatrix(res, home, away, maxgoal=maxgoal, m=m), stats=stats, home, away))
 }
 
 nhlFutureGames<-function(df){
@@ -226,12 +202,12 @@ buildStandingsTable<-function(stats, standings=NA){
 
 #nhl_2016_standings<-buildStandingsTable(nhl_2016_stats)
 
-predictRemainderOfSeason<-function(res, schedule, stats, maxgoal=8){
+predictRemainderOfSeason<-function(res, schedule, stats, maxgoal=8, m=NULL){
     #Takes in a schedule of games and returns the schedule with scores filled out.
     for (game in 1:nrow(schedule)){
         home<-as.character(schedule[game, "HomeTeam"])
         away<-as.character(schedule[game, "AwayTeam"])
-        score<-predictScore(res, stats, home, away, maxgoal = maxgoal)
+        score<-predictScore(res, stats, home, away, maxgoal = maxgoal, m=m)
         if (!is.na(score[3])){
             schedule[game,"OT.SO"]<-score[3]
             if(score[1]>score[2]){
@@ -255,13 +231,13 @@ predictRemainderOfSeason<-function(res, schedule, stats, maxgoal=8){
     return(schedule)
 }
 
-simulateSeason<-function(res, schedule, stats, past_results, n=10000, maxgoal=8){
+simulateSeason<-function(res, schedule, stats, past_results, n=10000, maxgoal=8, m=NULL){
     #simulates the remainder of the season n times, returning a standings table with the times each team finished at each position
     standings<-matrix(0, nrow=length(unique(stats$Team)), ncol=length(unique(stats$Team)))
     rownames(standings)<-sort(unique(stats$Team))
     colnames(standings)<-c(1:ncol(standings))
     for (i in 1:n){
-        scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal)
+        scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
         stats_table<-makeStatsTable(rbind(past_results, scores))
         standings<-buildStandingsTable(stats=stats_table, standings=standings)
     }
@@ -318,4 +294,79 @@ getConferenceStandings<-function(standings, conference){
     standings<-subset(standings, select=-Team)
     standings<-standings[do.call(order, c(as.list(standings), decreasing=TRUE)),]
     return(as.matrix(standings))
+}
+
+new_stdev<-function(stdev, mean, pop, new_val){
+    n_m = new_mean(mean, pop, new_val)
+    return(sqrt((((pop-2)*stdev^2) + (new_val - n_m)*(new_val-mean))/(pop-1)))
+}
+
+v_new_stdev<-Vectorize(new_stdev, c('stdev','mean', 'new_val'))
+
+new_mean<-function(mean, pop, new_val){
+    return((mean*pop + new_val)/(pop+1))
+}
+
+v_new_mean<-Vectorize(new_mean, c('mean', 'new_val'))
+
+point_predict<-function(res, schedule, stats, past_results, n=10000, maxgoal=8, m=NULL){
+    pp<-matrix(0, nrow=length(unique(stats$Team)), ncol=6)
+    rownames(pp)<-sort(unique(stats$Team))
+    colnames(pp)<-c('Points', 'Points_StDev', 'Playoffs', 'Playoffs_StDev', 'Presidents', 'Presidents_StDev')
+
+    scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal)
+    stats_table<-makeStatsTable(rbind(past_results, scores))
+    standings<-buildStandingsTable(stats_table)
+    pp[,"Points"]<-stats_table[order(stats_table$Team),]$P
+    playoff_list<-c(rownames(getConferenceStandings(standings, "East")[1:8,]), rownames(getConferenceStandings(standings, "West")[1:8,]))
+    pp[playoff_list,"Playoffs"]<-1
+    pp[names(which(standings[,"1"] == 1, arr.ind = TRUE)),"Presidents"]<-1
+
+    if(n==1){
+        scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
+        stats_table<-makeStatsTable(rbind(past_results, scores))
+        standings<-buildStandingsTable(stats_table)
+        playoff_list<-c(rownames(getConferenceStandings(standings, "East")[1:8,]), rownames(getConferenceStandings(standings, "West")[1:8,]))
+
+        pp[,'Points_StDev']<-apply(cbind(pp[,'Points'], stats_table[order(stats_table$Team), ]$P), 1, sd)
+        pp[,'Points']<-apply(cbind(pp[,'Points'], stats_table[order(stats_table$Team), ]$P), 1, mean)
+        pp[,"Playoffs_StDev"]<-apply(cbind(pp[,'Playoffs'], rownames(pp) %in% playoff_list), 1, sd)
+        pp[,"Playoffs"]<-apply(cbind(pp[,'Playoffs'], rownames(pp) %in% playoff_list), 1, mean)
+        pp[,"Presidents_StDev"]<-apply(cbind(pp[,'Presidents'], standings[,"1"]), 1, sd)
+        pp[,"Presidents"]<-apply(cbind(pp[,'Presidents'], standings[,"1"]), 1, mean)
+    }
+
+    else if(n>2){
+        scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
+        stats_table<-makeStatsTable(rbind(past_results, scores))
+        standings<-buildStandingsTable(stats_table)
+        playoff_list<-c(rownames(getConferenceStandings(standings, "East")[1:8,]), rownames(getConferenceStandings(standings, "West")[1:8,]))
+
+        scores2<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
+        stats_table2<-makeStatsTable(rbind(past_results, scores2))
+        standings2<-buildStandingsTable(stats_table2)
+        playoff_list2<-c(rownames(getConferenceStandings(standings2, "East")[1:8,]), rownames(getConferenceStandings(standings2, "West")[1:8,]))
+
+        pp[,'Points_StDev']<-apply(cbind(pp[,'Points'], stats_table[order(stats_table$Team), ]$P, stats_table2[order(stats_table2$Team), ]$P), 1, sd)
+        pp[,'Points']<-apply(cbind(pp[,'Points'], stats_table[order(stats_table$Team), ]$P, stats_table2[order(stats_table2$Team), ]$P), 1, mean)
+        pp[,"Playoffs_StDev"]<-apply(cbind(pp[,'Playoffs'], rownames(pp) %in% playoff_list, rownames(pp) %in% playoff_list2), 1, sd)
+        pp[,"Playoffs"]<-apply(cbind(pp[,'Playoffs'], rownames(pp) %in% playoff_list, rownames(pp) %in% playoff_list2), 1, mean)
+        pp[,"Presidents_StDev"]<-apply(cbind(pp[,'Presidents'], standings[,"1"], standings2[,"1"]), 1, sd)
+        pp[,"Presidents"]<-apply(cbind(pp[,'Presidents'], standings[,"1"], standings2[,"1"]), 1, mean)
+        for (i in 3:n){
+            scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
+            stats_table<-makeStatsTable(rbind(past_results, scores))
+            standings<-buildStandingsTable(stats_table)
+            playoff_list<-c(rownames(getConferenceStandings(standings, "East")[1:8,]), rownames(getConferenceStandings(standings, "West")[1:8,]))
+
+            pp[,'Points_StDev']<-v_new_stdev(pp[,'Points_StDev'], pp[,'Points'], i-1, stats_table[order(stats_table$Team), ]$P)
+            pp[,'Points']<-v_new_mean(pp[,'Points'], i-1, stats_table[order(stats_table$Team), ]$P)
+            pp[,'Playoffs_StDev']<-v_new_stdev(pp[,'Playoffs_StDev'], pp[,'Playoffs'], i-1, rownames(pp) %in% playoff_list)
+            pp[,'Playoffs']<-v_new_mean(pp[,'Playoffs'], i-1, rownames(pp) %in% playoff_list)
+            pp[,'Presidents_StDev']<-v_new_stdev(pp[,'Presidents_StDev'], pp[,'Presidents'], i-1, standings[,"1"])
+            pp[,'Presidents']<-v_new_mean(pp[,'Presidents'], i-1, standings[,"1"])
+        }
+    }
+
+    return(pp)
 }

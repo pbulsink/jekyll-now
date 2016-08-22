@@ -76,10 +76,10 @@ doDCPrediction<-function(df, xi=0, currentDate = Sys.Date()){
 
     #dummy fill parameters
     #initial parameter estimates
-    attack.params <- rep(.1, times=nteams-1) # one less parameter
-    defence.params <- rep(-0.8, times=nteams)
-    home.param <- 0.06
-    rho.init <- 0.03
+    attack.params <- rep(0.01, times=nteams-1) # one less parameter
+    defence.params <- rep(-0.7, times=nteams)
+    home.param <- 0.1
+    rho.init <- 0.1
     par.inits <- c(home.param, rho.init, attack.params, defence.params)
 
     #informative names
