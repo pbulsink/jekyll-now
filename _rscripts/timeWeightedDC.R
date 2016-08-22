@@ -51,7 +51,7 @@ DCmodelData <- function(df){
                 teams=team.names))
 }
 
-DCoptimFn <- function(params, DCm, xi=0){
+DCoptimFn <- function(params, DCm, xi=0, currentDate=Sys.Date()){
     home.p <- params[1]
     rho.p <- params[2]
 
@@ -63,13 +63,13 @@ DCoptimFn <- function(params, DCm, xi=0){
     lambda <- exp(DCm$homeTeamDMa %*% attack.p + DCm$awayTeamDMd %*% defence.p + home.p)
     mu <- exp(DCm$awayTeamDMa %*% attack.p + DCm$homeTeamDMd %*% defence.p)
 
-    w<-DCweights(DCm$dates, xi=xi)
+    w<-DCweights(DCm$dates, xi=xi, currentDate = currentDate)
     return(
         DClogLik(y1=DCm$homeGoals, y2=DCm$awayGoals, lambda, mu, rho.p, w) * -1
     )
 }
 
-doDCPrediction<-function(df, xi=0){
+doDCPrediction<-function(df, xi=0, currentDate = Sys.Date()){
     #Get a useful data set
     dcm<-DCmodelData(df)
     nteams <- length(dcm$teams)
@@ -88,7 +88,7 @@ doDCPrediction<-function(df, xi=0){
                           paste('Attack', dcm$teams[1:(nteams-1)], sep='.'),
                           paste('Defence', dcm$teams, sep='.'))
 
-    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE)
+    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE, currentDate=currentDate)
 
     parameters <- res$par
 

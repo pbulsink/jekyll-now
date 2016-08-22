@@ -5,26 +5,54 @@ date: "August 18, 2016"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+Now to some new posts! 
+
+When making a prediction engine, it's always fun to see what next season looks like. We have the schedule for the 2016-2017 NHL season, and we have all the data from the past seasons, so let's get some calculations going! 
+
+<!--more-->
+
+This will hopefully eventually maybe become a daily-updating model, that watches teams as they play though the season to see what happens. The cool thing would be to have available the effect of different scenarios, such as winning 'tonight's' game, or someone elses' fate depending on your own results. These are maybe eventual projects.
+
+All the code I'm using is available in earlier posts, so all you need to know is:
+- For the time dependant Dixon-Coles, I'm using data for the past 10 years only, including playoffs, with a &xi; value of 0.0191464. 
+- For the quick Dixon-Coles, I'm using only 2 years of data. 
+- Each team has 0.5 chance of winning if a game goes to overtime.
+- I'm simulating the season 1,000 times for each model. 
+
+```{r load_functions_data echo=False}
+source("./_rscripts/dcDataPrep.R")
+source("./_rscripts/fastDC.R")
+source("./_rscripts/gameAndSeasonPredicting.R")
+source("./_rscripts/timeWeightedDC.R")
+source("./_rscripts/plotPedictions.R")
+
+nhl_all<-as.data.frame(readRDS("./_data/hockeyData.Rds"))
+nhl_past_ten<-nhlDataPrep(nhl_all[nhl_all$Date>as.Date("2006-07-01"),])
+nhl_past_ten<-droplevels(nhl_past_ten)
+nhl_past_two<-nhl_past_ten[nhl_past_ten$Date>as.Date("2014-07-01"),]
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r prep_res echo=FALSE}
+ten_xi<-0.0191464
+res_ten<-doDCPrediction(nhl_past_ten, xi=ten_xi, currentDate=as.Date('2016-10-12'))
+fast_m<-doFastFit(nhl_past_two)
+res_two<-doFastDC(fast_m, nhl_past_two)
 ```
 
-## Including Plots
+```{r predictions echo=FALSE}
+future_games<-nhlFutureGames(read.csv('./_data/20162017.csv'))
+f_stats<-makeStatsTable(future_games)
+f_stats$OT.Win.Percent<-rep(0.5)
 
-You can also embed plots, for example:
+nhl_2017_ten<-simulateSeason(res_ten, future_games, past_results=NULL, f_stats, n=1000)
+#nhl_2017_two<-simulateSeason(res_two, future_games, past_results=NULL, f_stats, n=1000)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r prediction2017_ten echo=FALSE}
+plotPredictions(nhl_2017_ten, title="Results of Time-Weighted DC Prediction of 2016-2017", n_sims=1000)
+```
+
+```{r prediction2017_two, echo=FALSE}
+#plotPredictions(nhl_2017_two, title="Results of Fast DC Prediction of 2016-2017", n_sims=1000)
+```
