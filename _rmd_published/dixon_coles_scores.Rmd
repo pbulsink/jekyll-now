@@ -9,6 +9,7 @@ layout: post
 excerpt_separator: <!--more-->
 tags: R hockey cleaning predicting Dixon-Coles
 ---
+
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='images/',
                       warning=FALSE, message=FALSE, tidy=TRUE)
@@ -155,10 +156,10 @@ doDCPrediction<-function(df, xi=0){
     
     #dummy fill parameters
     #initial parameter estimates
-    attack.params <- rep(.1, times=nteams-1) # one less parameter
-    defence.params <- rep(-0.8, times=nteams)
-    home.param <- 0.06
-    rho.init <- 0.03
+    attack.params <- rep(0.03, times=nteams-1) # one less parameter
+    defence.params <- rep(-0.2, times=nteams)
+    home.param <- 0.1
+    rho.init <- 0.1
     par.inits <- c(home.param, rho.init, attack.params, defence.params)
     
     #informative names
@@ -167,7 +168,7 @@ doDCPrediction<-function(df, xi=0){
                           paste('Attack', dcm$teams[1:(nteams-1)], sep='.'),
                           paste('Defence', dcm$teams, sep='.'))
     
-    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE)
+    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "BFGS", hessian=FALSE)
     
     parameters <- res$par
     

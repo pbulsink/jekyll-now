@@ -76,8 +76,8 @@ doDCPrediction<-function(df, xi=0, currentDate = Sys.Date()){
 
     #dummy fill parameters
     #initial parameter estimates
-    attack.params <- rep(0.01, times=nteams-1) # one less parameter
-    defence.params <- rep(-0.7, times=nteams)
+    attack.params <- rep(0.03, times=nteams-1) # one less parameter
+    defence.params <- rep(-0.2, times=nteams)
     home.param <- 0.1
     rho.init <- 0.1
     par.inits <- c(home.param, rho.init, attack.params, defence.params)
@@ -87,15 +87,14 @@ doDCPrediction<-function(df, xi=0, currentDate = Sys.Date()){
     names(par.inits) <- c('HOME', 'RHO',
                           paste('Attack', dcm$teams[1:(nteams-1)], sep='.'),
                           paste('Defence', dcm$teams, sep='.'))
-
-    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE, currentDate=currentDate)
+    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "BFGS", currentDate=currentDate)
 
     parameters <- res$par
 
-    #compute last team attack parameter
-    missing.attack <- sum(parameters[3:(nteams+1)]) * -1
+    ##compute last team attack parameter
+    missing.attack <- sum(parameters[3:(nteams+1)])
 
-    #put it in the parameters vector
+    ##put it in the parameters vector
     parameters <- c(parameters[1:(nteams+1)], missing.attack, parameters[(nteams+2):length(parameters)])
     names(parameters)[nteams+2] <- paste('Attack.', dcm$teams[nteams], sep='')
 

@@ -232,7 +232,7 @@ predictRemainderOfSeason<-function(res, schedule, stats, maxgoal=8, m=NULL){
 }
 
 simulateSeason<-function(res, schedule, stats, past_results, n=10000, maxgoal=8, m=NULL){
-    #simulates the remainder of the season n times, returning a standings table with the times each team finished at each position
+    #simulates the (remainder of the) season n times, returning a standings table with the times each team finished at each position
     standings<-matrix(0, nrow=length(unique(stats$Team)), ncol=length(unique(stats$Team)))
     rownames(standings)<-sort(unique(stats$Team))
     colnames(standings)<-c(1:ncol(standings))
@@ -322,51 +322,56 @@ point_predict<-function(res, schedule, stats, past_results, n=10000, maxgoal=8, 
     pp[playoff_list,"Playoffs"]<-1
     pp[names(which(standings[,"1"] == 1, arr.ind = TRUE)),"Presidents"]<-1
 
-    if(n==1){
+    if(n==2){
         scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
         stats_table<-makeStatsTable(rbind(past_results, scores))
-        standings<-buildStandingsTable(stats_table)
-        playoff_list<-c(rownames(getConferenceStandings(standings, "East")[1:8,]), rownames(getConferenceStandings(standings, "West")[1:8,]))
+        stgs<-buildStandingsTable(stats_table)
+        standings<-buildStandingsTable(stats=stats_table, standings = standings)
+        playoff_list<-c(rownames(getConferenceStandings(stgs, "East")[1:8,]), rownames(getConferenceStandings(stgs, "West")[1:8,]))
 
         pp[,'Points_StDev']<-apply(cbind(pp[,'Points'], stats_table[order(stats_table$Team), ]$P), 1, sd)
         pp[,'Points']<-apply(cbind(pp[,'Points'], stats_table[order(stats_table$Team), ]$P), 1, mean)
         pp[,"Playoffs_StDev"]<-apply(cbind(pp[,'Playoffs'], rownames(pp) %in% playoff_list), 1, sd)
         pp[,"Playoffs"]<-apply(cbind(pp[,'Playoffs'], rownames(pp) %in% playoff_list), 1, mean)
-        pp[,"Presidents_StDev"]<-apply(cbind(pp[,'Presidents'], standings[,"1"]), 1, sd)
-        pp[,"Presidents"]<-apply(cbind(pp[,'Presidents'], standings[,"1"]), 1, mean)
+        pp[,"Presidents_StDev"]<-apply(cbind(pp[,'Presidents'], stgs[,"1"]), 1, sd)
+        pp[,"Presidents"]<-apply(cbind(pp[,'Presidents'], stgs[,"1"]), 1, mean)
     }
 
     else if(n>2){
         scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
         stats_table<-makeStatsTable(rbind(past_results, scores))
-        standings<-buildStandingsTable(stats_table)
-        playoff_list<-c(rownames(getConferenceStandings(standings, "East")[1:8,]), rownames(getConferenceStandings(standings, "West")[1:8,]))
+        stgs<-buildStandingsTable(stats_table)
+        standings<-buildStandingsTable(stats=stats_table, standings = standings)
+        playoff_list<-c(rownames(getConferenceStandings(stgs, "East")[1:8,]), rownames(getConferenceStandings(stgs, "West")[1:8,]))
 
         scores2<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
         stats_table2<-makeStatsTable(rbind(past_results, scores2))
-        standings2<-buildStandingsTable(stats_table2)
-        playoff_list2<-c(rownames(getConferenceStandings(standings2, "East")[1:8,]), rownames(getConferenceStandings(standings2, "West")[1:8,]))
+        stgs2<-buildStandingsTable(stats_table)
+        standings<-buildStandingsTable(stats=stats_table, standings = standings)
+        playoff_list2<-c(rownames(getConferenceStandings(stgs2, "East")[1:8,]), rownames(getConferenceStandings(stgs2, "West")[1:8,]))
 
         pp[,'Points_StDev']<-apply(cbind(pp[,'Points'], stats_table[order(stats_table$Team), ]$P, stats_table2[order(stats_table2$Team), ]$P), 1, sd)
         pp[,'Points']<-apply(cbind(pp[,'Points'], stats_table[order(stats_table$Team), ]$P, stats_table2[order(stats_table2$Team), ]$P), 1, mean)
         pp[,"Playoffs_StDev"]<-apply(cbind(pp[,'Playoffs'], rownames(pp) %in% playoff_list, rownames(pp) %in% playoff_list2), 1, sd)
         pp[,"Playoffs"]<-apply(cbind(pp[,'Playoffs'], rownames(pp) %in% playoff_list, rownames(pp) %in% playoff_list2), 1, mean)
-        pp[,"Presidents_StDev"]<-apply(cbind(pp[,'Presidents'], standings[,"1"], standings2[,"1"]), 1, sd)
-        pp[,"Presidents"]<-apply(cbind(pp[,'Presidents'], standings[,"1"], standings2[,"1"]), 1, mean)
-        for (i in 3:n){
-            scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
-            stats_table<-makeStatsTable(rbind(past_results, scores))
-            standings<-buildStandingsTable(stats_table)
-            playoff_list<-c(rownames(getConferenceStandings(standings, "East")[1:8,]), rownames(getConferenceStandings(standings, "West")[1:8,]))
+        pp[,"Presidents_StDev"]<-apply(cbind(pp[,'Presidents'], stgs[,"1"], stgs2[,"1"]), 1, sd)
+        pp[,"Presidents"]<-apply(cbind(pp[,'Presidents'], stgs[,"1"], stgs2[,"1"]), 1, mean)
+        if (n>3){
+            for (i in 4:n){
+                scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
+                stats_table<-makeStatsTable(rbind(past_results, scores))
+                standings<-buildStandingsTable(stats=stats_table, standings = standings)
+                stgs<-buildStandingsTable(stats_table)
+                playoff_list<-c(rownames(getConferenceStandings(stgs, "East")[1:8,]), rownames(getConferenceStandings(stgs, "West")[1:8,]))
 
-            pp[,'Points_StDev']<-v_new_stdev(pp[,'Points_StDev'], pp[,'Points'], i-1, stats_table[order(stats_table$Team), ]$P)
-            pp[,'Points']<-v_new_mean(pp[,'Points'], i-1, stats_table[order(stats_table$Team), ]$P)
-            pp[,'Playoffs_StDev']<-v_new_stdev(pp[,'Playoffs_StDev'], pp[,'Playoffs'], i-1, rownames(pp) %in% playoff_list)
-            pp[,'Playoffs']<-v_new_mean(pp[,'Playoffs'], i-1, rownames(pp) %in% playoff_list)
-            pp[,'Presidents_StDev']<-v_new_stdev(pp[,'Presidents_StDev'], pp[,'Presidents'], i-1, standings[,"1"])
-            pp[,'Presidents']<-v_new_mean(pp[,'Presidents'], i-1, standings[,"1"])
+                pp[,'Points_StDev']<-v_new_stdev(pp[,'Points_StDev'], pp[,'Points'], i-1, stats_table[order(stats_table$Team), ]$P)
+                pp[,'Points']<-v_new_mean(pp[,'Points'], i-1, stats_table[order(stats_table$Team), ]$P)
+                pp[,'Playoffs_StDev']<-v_new_stdev(pp[,'Playoffs_StDev'], pp[,'Playoffs'], i-1, rownames(pp) %in% playoff_list)
+                pp[,'Playoffs']<-v_new_mean(pp[,'Playoffs'], i-1, rownames(pp) %in% playoff_list)
+                pp[,'Presidents_StDev']<-v_new_stdev(pp[,'Presidents_StDev'], pp[,'Presidents'], i-1, stgs[,"1"])
+                pp[,'Presidents']<-v_new_mean(pp[,'Presidents'], i-1, stgs[,"1"])
+            }
         }
     }
-
-    return(pp)
+    return(list(standings, pp))
 }

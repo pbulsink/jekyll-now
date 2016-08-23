@@ -184,10 +184,10 @@ doDCPrediction<-function(df){
     
     #dummy fill parameters
     #initial parameter estimates
-    attack.params <- rep(0.1, times=nteams-1) # one less parameter
-    defence.params <- rep(-0.8, times=nteams)
-    home.param <- 0.06
-    rho.init <- 0.03
+    attack.params <- rep(0.03, times=nteams-1) # one less parameter
+    defence.params <- rep(-0.2, times=nteams)
+    home.param <- 0.1
+    rho.init <- 0.1
     par.inits <- c(home.param, rho.init, attack.params, defence.params)
     
     #informative names
@@ -361,7 +361,7 @@ doDCPrediction_w<-function(df, xi=0){
                           paste('Attack', dcm$teams[1:(nteams-1)], sep='.'),
                           paste('Defence', dcm$teams, sep='.'))
     
-    res <- optim(par=par.inits, fn=DCoptimFn_w, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE)
+    res <- optim(par=par.inits, fn=DCoptimFn_w, DCm=dcm, xi=xi, method = "BFGS", hessian=FALSE)
     
     parameters <- res$par
     
@@ -400,7 +400,7 @@ t_one_calc<-proc.time()-t
 Running it again, we get 10 seasons taking `r as.integer(t_all_calc[3])` seconds, and one season `r as.integer(t_one_calc[3])` seconds. We could optimize that futher if we wanted (eg. drop data for weight of less than some amount), but fortunately we only have to run this once to start predicting all sorts of results.
 
 We'll plot the Attack and Defence parameters for each team to se if there's any correllation.
-```{r xi_attack_defence_corr_plot, echo=FALSE}
+```{r xi_attack_defence_corr_plot_2, echo=FALSE}
 library(ggplot2)
 library(ggrepel)
 team_params<-data.frame("Team"=unique(nhl2015$AwayTeam), "Attack"=0, "Defence"=0)

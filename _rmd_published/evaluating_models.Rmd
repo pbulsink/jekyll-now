@@ -156,10 +156,10 @@ doDCPrediction<-function(df, xi=0, currentDate = Sys.Date()){
     
     #dummy fill parameters
     #initial parameter estimates
-    attack.params <- rep(.1, times=nteams-1) # one less parameter
-    defence.params <- rep(-0.8, times=nteams)
-    home.param <- 0.06
-    rho.init <- 0.03
+    attack.params <- rep(0.03, times=nteams-1) # one less parameter
+    defence.params <- rep(-0.2, times=nteams)
+    home.param <- 0.1
+    rho.init <- 0.1
     par.inits <- c(home.param, rho.init, attack.params, defence.params)
     
     #informative names
@@ -168,7 +168,7 @@ doDCPrediction<-function(df, xi=0, currentDate = Sys.Date()){
                           paste('Attack', dcm$teams[1:(nteams-1)], sep='.'),
                           paste('Defence', dcm$teams, sep='.'))
     
-    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "Nelder-Mead", hessian=FALSE, currentDate=currentDate)
+    res <- optim(par=par.inits, fn=DCoptimFn, DCm=dcm, xi=xi, method = "BFGS", hessian=FALSE, currentDate=currentDate)
     
     parameters <- res$par
     
@@ -691,4 +691,4 @@ Even Odds (No OT)|`r rps_even_no_ot$rps`
 Even Odds (Plus OT)|`r rps_even$rps`
 Randomly Generated Odds|`r rps_rand$rps`
 
-Looks like there's some work to do yet on improving models to be better than a weighted coin fliip!
+Looks like there's some work to do yet on improving models to be better than a weighted coin flip!

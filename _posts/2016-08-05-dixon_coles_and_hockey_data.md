@@ -11,6 +11,9 @@ tags: R hockey cleaning exploratory Dixon-Coles
 ---
  
 
+ 
+
+ 
 *Note: This is earlier work I did (last winter/spring) so some info may seem dated at time of posting. I've used data files current to then.*
  
 [Last entry]({{ site.baseurl }}/blog/2016-08-04/data_preparation.html) we did some data importing and cleaning of historical NHL data, from 2005 to present. This was in anticipation of performing simulation of games, by the Dixon-Coles method. Much of this entry is not my original work, I've used slightly modified versions of the code available from Jonas at the [opisthokonta.com](http://opisthokonta.net/?p=890) [blog](http://opisthokonta.net/?p=913). I've mixed his [optimized Dixon-Coles method](http://opisthokonta.net/?p=939) and the [time regression method](http://opisthokonta.net/?p=1013) which was a key part of Dixon and Coles' paper.
@@ -105,10 +108,10 @@ doDCPrediction <- function(df) {
     nteams <- length(dcm$teams)
     
     # dummy fill parameters initial parameter estimates
-    attack.params <- rep(0.1, times = nteams - 1)  # one less parameter
-    defence.params <- rep(-0.8, times = nteams)
-    home.param <- 0.06
-    rho.init <- 0.03
+    attack.params <- rep(0.03, times = nteams - 1)  # one less parameter
+    defence.params <- rep(-0.2, times = nteams)
+    home.param <- 0.1
+    rho.init <- 0.1
     par.inits <- c(home.param, rho.init, attack.params, defence.params)
     
     # informative names skip the last team
@@ -150,7 +153,7 @@ Use of this is to feed in the data into the `doDCPrediction` function, returning
  
 
  
-The full 10 seasons took 324 seconds, while even just one season took 77 seconds. We haven't even added in the promised time dependancy yet! WOW. Hopefully it's a good model.
+The full 10 seasons took 302 seconds, while even just one season took 68 seconds. We haven't even added in the promised time dependancy yet! WOW. Hopefully it's a good model.
  
 We'll plot the Attack and Defence parameters for each team to se if there's any correllation.
 ![plot of chunk attack_defence_corr_plot](/images/attack_defence_corr_plot-1.png)
@@ -246,7 +249,7 @@ doDCPrediction_w <- function(df, xi = 0) {
     names(par.inits) <- c("HOME", "RHO", paste("Attack", dcm$teams[1:(nteams - 
         1)], sep = "."), paste("Defence", dcm$teams, sep = "."))
     
-    res <- optim(par = par.inits, fn = DCoptimFn_w, DCm = dcm, xi = xi, method = "Nelder-Mead", 
+    res <- optim(par = par.inits, fn = DCoptimFn_w, DCm = dcm, xi = xi, method = "BFGS", 
         hessian = FALSE)
     
     parameters <- res$par
@@ -277,10 +280,10 @@ Remaking those functions took a lot of space, but only a few lines changed. We m
  
 
  
-Running it again, we get 10 seasons taking 73 seconds, and one season 7 seconds. We could optimize that futher if we wanted (eg. drop data for weight of less than some amount), but fortunately we only have to run this once to start predicting all sorts of results.
+Running it again, we get 10 seasons taking 547 seconds, and one season 40 seconds. We could optimize that futher if we wanted (eg. drop data for weight of less than some amount), but fortunately we only have to run this once to start predicting all sorts of results.
  
 We'll plot the Attack and Defence parameters for each team to se if there's any correllation.
-![plot of chunk xi_attack_defence_corr_plot](/images/xi_attack_defence_corr_plot-1.png)
+![plot of chunk xi_attack_defence_corr_plot_2](/images/xi_attack_defence_corr_plot_2-1.png)
  
 
 {% highlight r %}
@@ -292,36 +295,36 @@ kable(team_params)
 
 |Team                  |    Attack|    Defence|
 |:---------------------|---------:|----------:|
-|Philadelphia Flyers   | 0.9790748| -0.0788341|
-|Vancouver Canucks     | 1.0655656| -0.0714568|
-|San Jose Sharks       | 1.0363881| -0.0468579|
-|Montreal Canadiens    | 0.9780729| -0.2676516|
-|Winnipeg Jets         | 1.1897809| -0.1853846|
-|Columbus Blue Jackets | 1.0588080|  0.0492161|
-|Chicago Blackhawks    | 1.0137128| -0.2615431|
-|Boston Bruins         | 0.9381008| -0.1745453|
-|Calgary Flames        | 1.0520900| -0.1145957|
-|Colorado Avalanche    | 0.9853008| -0.0952970|
-|Ottawa Senators       | 1.0545362| -0.1489762|
-|New Jersey Devils     | 0.8024103| -0.1626150|
-|Anaheim Ducks         | 1.0291718| -0.0708392|
-|New York Rangers      | 1.1248440| -0.2300142|
-|Florida Panthers      | 0.9201249| -0.1212387|
-|New York Islanders    | 1.1289146| -0.0436864|
-|Los Angeles Kings     | 1.0024234| -0.2124901|
-|Washington Capitals   | 1.0841297| -0.1942100|
-|Buffalo Sabres        | 0.6751147|  0.1108573|
-|Minnesota Wild        | 1.0493757| -0.2110302|
-|Dallas Stars          | 1.1929785|  0.0643038|
-|Carolina Hurricanes   | 0.8441699| -0.0943338|
-|Pittsburgh Penguins   | 0.9986122| -0.1646269|
-|Edmonton Oilers       | 0.9016979|  0.1353282|
-|Toronto Maple Leafs   | 0.9656608|  0.0833694|
-|St. Louis Blues       | 1.0989704| -0.1931401|
-|Detroit Red Wings     | 1.0543697| -0.1110697|
-|Nashville Predators   | 1.0302500| -0.1771393|
-|Tampa Bay Lightning   | 1.1834002| -0.1244810|
-|Arizona Coyotes       | 0.7116459|  0.1047323|
+|Philadelphia Flyers   | 0.9788685| -0.0790512|
+|Vancouver Canucks     | 1.0653285| -0.0716426|
+|San Jose Sharks       | 1.0363260| -0.0470196|
+|Montreal Canadiens    | 0.9781757| -0.2675670|
+|Winnipeg Jets         | 1.1885145| -0.1861203|
+|Columbus Blue Jackets | 1.0588779|  0.0488788|
+|Chicago Blackhawks    | 1.0142106| -0.2610679|
+|Boston Bruins         | 0.9381271| -0.1748817|
+|Calgary Flames        | 1.0520708| -0.1149490|
+|Colorado Avalanche    | 0.9855419| -0.0955395|
+|Ottawa Senators       | 1.0544292| -0.1488981|
+|New Jersey Devils     | 0.8025751| -0.1623552|
+|Anaheim Ducks         | 1.0291692| -0.0705651|
+|New York Rangers      | 1.1246283| -0.2301985|
+|Florida Panthers      | 0.9200872| -0.1212742|
+|New York Islanders    | 1.1289564| -0.0438022|
+|Los Angeles Kings     | 1.0024739| -0.2126434|
+|Washington Capitals   | 1.0839849| -0.1946443|
+|Buffalo Sabres        | 0.6755308|  0.1105787|
+|Minnesota Wild        | 1.0494299| -0.2112040|
+|Dallas Stars          | 1.1928880|  0.0639135|
+|Carolina Hurricanes   | 0.8444117| -0.0946161|
+|Pittsburgh Penguins   | 0.9986188| -0.1643924|
+|Edmonton Oilers       | 0.9010637|  0.1349262|
+|Toronto Maple Leafs   | 0.9660961|  0.0829082|
+|St. Louis Blues       | 1.0989753| -0.1934415|
+|Detroit Red Wings     | 1.0542852| -0.1113708|
+|Nashville Predators   | 1.0303242| -0.1773239|
+|Tampa Bay Lightning   | 1.1833470| -0.1245115|
+|Arizona Coyotes       | 0.7119971|  0.1045630|
  
 There's another way of generating the teams strengths, and this is wicked fast. Again, this is based on opisthokonta and from Martin Eastwood and the [pena.lt/y](pena.lt/y blog) blog. This method is slightly lsess accurate, and doesn't do time dependance (yet) but is fast enough and simple enough to cut it. 
  
@@ -379,4 +382,4 @@ resAll <- doFastDC(mAll, nhl_all)
 tFast <- proc.time() - t
 {% endhighlight %}
  
-So, for all the data, that provides us with a fitting in 5 seconds, compared to 73 seconds for the above method. We'll continue to use this method for speed in later work as we predict results for some games!
+So, for all the data, that provides us with a fitting in 3 seconds, compared to 547 seconds for the above method. We'll continue to use this method for speed in later work as we predict results for some games!

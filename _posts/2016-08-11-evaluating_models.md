@@ -36,12 +36,10 @@ where:
 and *e j* is the actual outcome at that position. 
  
 Our example looks as this:
-
-Component | Value 
-:---|---:
-![]({{ site.baseurl }}/images/rps_equation_part1.png) | *{0.6,0.75(,1)}* 
-![]({{ site.baseurl }}/images/rps_equation_part2.png) | *{0,0(,1)}* 
-RPS | *0.46125*
+ 
+![]({{ site.baseurl }}/images/rps_equation_part1.png) | ![]({{ site.baseurl }}/images/rps_equation_part2.png) | RPS
+---|---|---
+*{0.6,0.75(,1)}* | *{0,0(,1)}* | *0.46125*
  
 Normally, the summation sets don't include the *1*, that value is implied.
  
@@ -128,7 +126,7 @@ rps_2015 <- rps(unlist(test_results), adh_2015)
 rps_all <- rps(unlist(test_results), adh_all)
 {% endhighlight %}
  
-Now, lets look at the rps results to see how they compare. For 2015 only data in the model, our RPS value is 0.250604, and for all the available data, it's 0.2441252. Not a huge difference. But, lets' optimize the xi value by using RPS.
+Now, lets look at the rps results to see how they compare. For 2015 only data in the model, our RPS value is 0.233542, and for all the available data, it's 0.2334388. Not a huge difference. But, lets' optimize the xi value by using RPS.
  
 
 {% highlight r %}
@@ -150,7 +148,7 @@ opt_xi_long$minimum <- 0.01914645
 opt_xi_long$objective["rps"] <- 0.2407655
 {% endhighlight %}
  
-So we see that for the 2015 data only, we get an optimal xi value of 0.0393049, with an RPS of 0.248933. We can do optimization for the full data as well. You'll have to believe me when I say that the optimal xi value takes a lot longer to elucidate, but it's 0.0191464, giving us an RPS of0.2407655.
+So we see that for the 2015 data only, we get an optimal xi value of 0.0184461, with an RPS of 0.2334589. We can do optimization for the full data as well. You'll have to believe me when I say that the optimal xi value takes a lot longer to elucidate, but it's 0.0191464, giving us an RPS of0.2407655.
  
 Let's compare some more methods, to know how well this model really compares. We don't know if this RPS value is good or bad, so let's use some dummy data. If the home team wins every game, our odds are `{0,0,1}`. If we use the '50-50' win method, our odds for each game are `{0.5,0,0.5}`. If we consider OT/SO results, we'll have approximately `{0.4,0.2,0.4}` for each game. the RPS for both is calculated. One final matrix of randomly generated proportions is tested too.
  
@@ -180,9 +178,9 @@ This gives us the following results:
  
 Method|RPS
 ---|---
-Short Training|0.250604
-Long Training|0.2441252
-Short Training (time weighted)|0.248933
+Short Training|0.233542
+Long Training|0.2334388
+Short Training (time weighted)|0.2334589
 Long Training (time weighted)|0.2407655
 Home Wins Always|0.4836795
 Even Odds (No OT)|0.25
