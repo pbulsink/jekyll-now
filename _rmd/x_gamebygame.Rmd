@@ -24,7 +24,7 @@ With the library and patch loaded, we can start getting all of the data from the
 We start by defining the database of all the games available:
 
 ```{r full_game_database}
-all_games<-full.game.database(extra.seasons = 1)
+all_games<-full.game.database()
 ```
 
 We use the `extra.seasons` parameter because the original code was written to cover up to 2014-2015. By calling in some extra.seasons, we can get the game data for later seasons. 
