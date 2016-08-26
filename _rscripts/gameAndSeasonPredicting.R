@@ -95,7 +95,7 @@ makeStatsTable<-function(df) {
                           P = 0,
                           HomeFor = 0, HomeAgainst = 0,
                           AwayFor = 0, AwayAgainst = 0,
-                          GF = 0, GA = 0, DIFF = 0, PP=0, OT.Win.Percent=0)
+                          GF = 0, GA = 0, DIFF = 0, PPG=0, OT.Win.Percent=0)
 
     # Games Played
     tmpTable$HomeGames = as.numeric(table(df$HomeTeam))
@@ -113,11 +113,11 @@ makeStatsTable<-function(df) {
     tmpTable$HomeOTW = as.numeric(table(df$HomeTeam[(df$OT.Win == "H") & (df$OT.SO == "OT")]))
     tmpTable$HomeSOW = as.numeric(table(df$HomeTeam[(df$OT.Win == "H") & (df$OT.SO == "SO")]))
 
-    tmpTable$AwayOTW = as.numeric(table(df$AwayTeam[(df$OT.Win == "A") & (df$OT.SO == "OT")]))
-    tmpTable$AwaySOW = as.numeric(table(df$AwayTeam[(df$OT.Win == "A") & (df$OT.SO == "SO")]))
+    tmpTable$AwayOTW = as.numeric(table(df$AwayTeam[(df$OT.Win == "V") & (df$OT.SO == "OT")]))
+    tmpTable$AwaySOW = as.numeric(table(df$AwayTeam[(df$OT.Win == "V") & (df$OT.SO == "SO")]))
 
     #OT Losses
-    tmpTable$HomeOTL = as.numeric(table(df$HomeTeam[(df$OT.Win == "A")]))
+    tmpTable$HomeOTL = as.numeric(table(df$HomeTeam[(df$OT.Win == "V")]))
     tmpTable$AwayOTL = as.numeric(table(df$AwayTeam[(df$OT.Win == "H")]))
 
     #W/L/OTL/ROW
@@ -141,11 +141,11 @@ makeStatsTable<-function(df) {
     tmpTable$DIFF = tmpTable$GF - tmpTable$GA
 
     #Additional Stats
-    tmpTable$P = 2 * tmpTable$W + tmpTable$OTL
-    tmpTable$PP = tmpTable$P/tmpTable$GP
+    tmpTable$P = (2 * tmpTable$W) + tmpTable$OTL
+    tmpTable$PPG = tmpTable$P/tmpTable$GP
     tmpTable$OT.Win.Percent = (tmpTable$HomeOTW + tmpTable$HomeSOW + tmpTable$AwayOTW + tmpTable$AwaySOW)/(tmpTable$HomeOTW + tmpTable$HomeSOW + tmpTable$AwayOTW + tmpTable$AwayOTL + tmpTable$OTL)
-    tmpTable<-tmpTable[,c("Team","GP", "W", "OTL", "L", "ROW", "P", "GF", "GA", "DIFF", "PP", "OT.Win.Percent")]
-    tmpTable<-tmpTable[order(-tmpTable$P, -tmpTable$PP, -tmpTable$ROW, -tmpTable$DIFF),]
+    tmpTable<-tmpTable[,c("Team","GP", "W", "OTL", "L", "ROW", "P", "GF", "GA", "DIFF", "PPG", "OT.Win.Percent")]
+    tmpTable<-tmpTable[order(-tmpTable$P, -tmpTable$PPG, -tmpTable$ROW, -tmpTable$DIFF),]
 
     rownames(tmpTable)<-1:nrow(tmpTable)
 
@@ -155,8 +155,8 @@ makeStatsTable<-function(df) {
 #stats2015<-makeStatsTable(nhl2015)
 #stats_all<-makeStatsTable(nhl_all)
 
-buildStandingsTable<-function(stats, standings=NA){
-    if (is.na(standings)){
+buildStandingsTable<-function(stats, standings=NULL){
+    if (is.null(standings)){
         standings<-matrix(0, nrow=length(unique(stats$Team)), ncol=length(unique(stats$Team)))
         rownames(standings)<-sort(unique(stats$Team))
         colnames(standings)<-c(1:ncol(standings))
@@ -180,24 +180,6 @@ nhlFutureGames<-function(df){
     df$OT.Win<-""
     colnames(df)<-c("Date", "AwayTeam","AG","HomeTeam","HG","OT.SO","OT.Win")
     return(df)
-}
-
-#future_games<-nhlFutureGames(read.csv('./_data/20152016.csv'))
-
-#nhl2016<-nhlDataPrep(read.csv('./_data/20152016.csv'))
-#nhl_2016_stats<-makeStatsTable(nhl2016)
-
-buildStandingsTable<-function(stats, standings=NA){
-    if (is.na(standings)){
-        standings<-matrix(0, nrow=length(unique(stats$Team)), ncol=length(unique(stats$Team)))
-        rownames(standings)<-sort(unique(stats$Team))
-        colnames(standings)<-c(1:ncol(standings))
-    }
-
-    for(t in 1:nrow(standings)){
-        standings[stats[t, "Team"], t] <- standings[stats[t, "Team"], t]+1
-    }
-    return(standings)
 }
 
 #nhl_2016_standings<-buildStandingsTable(nhl_2016_stats)
@@ -314,7 +296,7 @@ point_predict<-function(res, schedule, stats, past_results, n=10000, maxgoal=8, 
     rownames(pp)<-sort(unique(stats$Team))
     colnames(pp)<-c('Points', 'Points_StDev', 'Playoffs', 'Playoffs_StDev', 'Presidents', 'Presidents_StDev')
 
-    scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal)
+    scores<-predictRemainderOfSeason(res=res, schedule=schedule, stats=stats, maxgoal=maxgoal, m=m)
     stats_table<-makeStatsTable(rbind(past_results, scores))
     standings<-buildStandingsTable(stats_table)
     pp[,"Points"]<-stats_table[order(stats_table$Team),]$P

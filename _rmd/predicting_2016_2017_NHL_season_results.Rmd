@@ -35,19 +35,19 @@ source("./_rscripts/timeWeightedDC.R")
 source("./_rscripts/plotPredictions.R")
 
 nhl_all<-as.data.frame(readRDS("./_data/hockeyData.Rds"))
-nhl_past_ten<-nhlDataPrep(nhl_all[nhl_all$Date>as.Date("2006-07-01"),])
+nhl_past_ten<-getAndPrepAllData(c(2007:2016))
 nhl_past_ten<-droplevels(nhl_past_ten)
 nhl_past_two<-nhl_past_ten[nhl_past_ten$Date>as.Date("2014-07-01"),]
 ```
 
 ```{r prep_res, echo=FALSE}
-ten_xi<-0.0191464
+ten_xi<-0.02174854
 res_ten<-doDCPrediction(nhl_past_ten, xi=ten_xi, currentDate=as.Date('2016-10-12'))
 fast_m<-doFastFit(nhl_past_two)
 res_two<-doFastDC(fast_m, nhl_past_two)
 ```
 
-```{r predictions_ten, echo=FALSE}
+```{r predictions_ten, echo=FALSE, warnings=FALSE}
 future_games<-nhlFutureGames(read.csv('./_data/20162017.csv'))
 f_stats<-makeStatsTable(future_games)
 f_stats$OT.Win.Percent<-rep(0.5)
@@ -57,17 +57,17 @@ nhl_2017_ten<-point_predict(res=res_ten, schedule=future_games, past_results=NUL
 ```
 Ten Year (Time weighted) Predictions:
 ```{r prediction2017_ten_plot, echo=FALSE}
-plotPredictions(nhl_2017_ten[1], title="Results of Time-Weighted DC Prediction of 2016-2017", n_sims=1000)
-kable(nhl_2017_ten[2])
+plotPredictions(nhl_2017_ten[[1]], title="Results of Time-Weighted DC Prediction of 2016-2017", n_sims=1000)
+kable(nhl_2017_ten[[2]])
 ```
 
 Two Year (Fast DC) Predictions:
 ```{r predictions_two, echo=FALSE}
-nhl_2017_two<-simulateSeason(res=res_two, schedule=future_games, past_results=NULL, stats=f_stats, n=1000, m=fast_m)
+nhl_2017_two<-point_predict(res=res_two, schedule=future_games, past_results=NULL, stats=f_stats, n=1000, m=fast_m)
 ```
 
 ```{r prediction2017_two_plot, echo=FALSE}
-plotPredictions(nhl_2017_two[1], title="Results of Fast DC Prediction of 2016-2017", n_sims=1000)
-kable(nhl_2017_two[2])
+plotPredictions(nhl_2017_two[[1]], title="Results of Fast DC Prediction of 2016-2017", n_sims=1000)
+kable(nhl_2017_two[[2]])
 ```
 

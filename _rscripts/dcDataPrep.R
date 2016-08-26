@@ -45,11 +45,20 @@ clean_teams<-function(df){
 }
 
 
-getAndPrepAllData<-function(year_list=c(2006, 2007, 2008, 2009,2010,2011,2012,2013,2014,2015,2016)){
+getAndPrepAllData<-function(year_list=c(2006, 2007, 2008, 2009,2010,2011,2012,2013,2014,2015,2016), playoffs=TRUE,lastPlayoffs=FALSE){
     df<-data.frame(Date=NULL, Visitor=NULL, G=NULL, Home=NULL, G.1=NULL, X.1=NULL)
     for (year in 1:length(year_list)){
         df<-rbind(df, read.csv(paste('./_data/',year_list[year]-1,year_list[year],".csv", sep=''))[2:7])
     }
+    if (playoffs){
+      for (year in 1:(length(year_list)-1)){  
+        df<-rbind(df, read.csv(paste('./_data/',year_list[year]-1,year_list[year],"Playoffs.csv", sep=''))[2:7])
+      }
+      if (lastPlayoffs){
+        df<-rbind(df, read.csv(paste('./_data/',year_list[length(year_list)]-1,year_list[length(year_list)],"Playoffs.csv", sep=''))[2:7])
+      }
+    }
+    
     try(clean_teams(df), silent=TRUE)
     df<-droplevels(df)
     df<-nhlDataPrep(df)
