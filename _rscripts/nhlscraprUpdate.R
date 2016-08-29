@@ -350,6 +350,8 @@ compile.all.games<-function (rdata.folder = "nhlr-data", output.folder = "source
 
 ###
 #
+# From this point, copied functions that were masked from nhlscrapr
+# after new version of full.game.database and compile.all.games
 #
 ###
 
