@@ -3,7 +3,7 @@
 ### by Jack Davis 2016-04-18 ( jackd@sfu.ca )
 
 ###Further patches by Philip Bulsink ( bulsinkp@gmail.com )
-
+require(nhlscrapr)
 ### Now works for extra seasons
 full.game.database = function (extra.seasons = 0) 
 {
@@ -181,8 +181,14 @@ aggregate_roster_by_name = function(roster)
 
 compile.all.games<-function (rdata.folder = "nhlr-data", output.folder = "source-data", 
                              new.game.table = NULL, seasons = NULL, verbose = FALSE, override.days.back = NULL, 
-                             date.check = FALSE, ...) 
+                             date.check = FALSE, extra.seasons = 0, ...) 
 {
+  
+  if (extra.seasons > 0) 
+  {
+    seasons <- c(seasons, paste(2015 + 1:extra.seasons, 2016 + 1:extra.seasons, sep = ""))  ## Patched: Extra seasons now start at 20162017 - PB
+  }
+  
   suppressWarnings(dir.create(output.folder))
   if (file.exists(paste0(output.folder, "/nhlscrapr-core.RData"))) {
     message("Loading game and player data.")
@@ -211,6 +217,10 @@ compile.all.games<-function (rdata.folder = "nhlr-data", output.folder = "source
     eligible.seasons <- c("20022003", "20032004", "20052006", 
                           "20062007", "20072008", "20082009", "20092010", "20102011", 
                           "20112012", "20122013", "20132014", "20142015", "20152016")
+    if (extra.seasons > 0) 
+    {
+      eligible.seasons <- c(seasons, paste(2015 + 1:extra.seasons, 2016 + 1:extra.seasons, sep = ""))  ## Patched: Extra seasons now start at 20162017 - PB
+    }
     if (!all(seasons %in% eligible.seasons)) 
       stop("Specified seasons must be within ", paste(eligible.seasons, 
                                                       collapse = ", "))
@@ -297,6 +307,8 @@ compile.all.games<-function (rdata.folder = "nhlr-data", output.folder = "source
           out <- NULL
         return(out)
       })
+      saveRDS(new.pbp.2, file = "new.pbp.2.RDS")
+      saveRDS(new.pbp, file="new.pbp.RDS")
       secondary.data <- fold.frames(new.pbp.2)
       secondary.data$adjusted.distance <- NA
       secondary.data$shot.prob.distance <- NA
@@ -580,10 +592,6 @@ fix.names.manually <- function (master.list) {
   return(master.list)
 }
 
-
-
-
-
 .simpleCap <- function(x, ch=" ", ch2=ch) {
   s <- strsplit(x, ch)[[1]]
   paste(toupper(substring(s, 1, 1)), tolower(substring(s, 2)),
@@ -610,3 +618,69 @@ manual.patches <- function (roster.unique) {
   
 }
 
+fold.frames <- function(frame.list) {
+  #frame.list = new.pbp.2
+  
+  if (length(frame.list) > 1) repeat {
+    if (length(frame.list) == 1) break
+    hold.list <- list()
+    for (kk in 1:floor(length(frame.list)/2))
+      hold.list[[kk]] <- tryCatch(
+        rbind(frame.list[[2*kk-1]], frame.list[[2*kk]]),
+        warning = function(war) message(paste(kk, war)),
+        error = function(err) message(paste(kk, err)),
+        finally = {})
+    if (length(frame.list) %% 2 == 1)
+      if (length(hold.list) > 0)
+        hold.list[[length(hold.list)]] <- rbind(hold.list[[length(hold.list)]],
+                                                frame.list[[2*kk+1]]) else hold.list <- frame.list[2*kk+1]
+                                                
+                                                frame.list <- hold.list
+                                                rm(hold.list)
+                                                message ("Folding data frames. Total: ",length(frame.list))
+                                                if (length(frame.list) == 1) break
+  }
+  
+  return(frame.list[[1]])
+}
+
+augment.game <- function (game.info, player.list) {
+  #game.info=sample.game; player.list=roster; season=""; gcode=""
+  
+  playbyplay <- game.info$playbyplay; teams <- game.info$teams
+  if (length(playbyplay) == 0) stop ("Play-by-play table does not exist.")
+  if (length(player.list) == 0) stop ("Player roster does not exist.")
+  
+  
+  #replace players with ID numbers.
+  for (cc in c(paste0("a",1:6), paste0("h",1:6), "away.G", "home.G", "ev.player.1", "ev.player.2", "ev.player.3")) {
+    replacement <- player.list$player.id[match(playbyplay[,cc], player.list$numfirstlast)]
+    if (is.null(replacement)) replacement <- rep(NA, dim(playbyplay)[1])
+    playbyplay[,cc] <- replacement
+    playbyplay[is.na(playbyplay[,cc]),cc] <- 1
+  }
+  
+  #playbyplay <- patch.for.shottypes(playbyplay)
+  return(playbyplay)
+}
+
+pick.section <- function (xy.points) {
+  
+  in.1 <- apply(nhlscrapr::quadsarray[1:3,,], 3, in.tri.rev, xy.points)
+  in.2 <- apply(nhlscrapr::quadsarray[c(1,3,4),,], 3, in.tri.rev, xy.points)
+  picks <- in.1 | in.2
+  picks[is.na(picks)] <- FALSE
+  
+  picker <- function (row) if (sum(row)>0) min(which(row)) else 0
+  sections <- apply (picks, 1, picker)
+  return(sections)
+}
+
+in.triangle <- function (xyp, tr) {
+  area <- (-tr[5]*tr[3] + tr[4]*(tr[3]-tr[2]) + tr[1]*(-tr[6]+tr[5]) + tr[2]*tr[6])/2
+  ss <- 1/2/area * (tr[4]*tr[3] - tr[1]*tr[6] + (tr[6]-tr[4])*xyp[,1] + (tr[1]-tr[3])*xyp[,2])
+  tt <- 1/2/area * (tr[1]*tr[5] - tr[4]*tr[2] + (tr[4]-tr[5])*xyp[,1] + (tr[2]-tr[1])*xyp[,2])
+  output <- (ss > 0 & tt > 0 & 1 > ss+tt)
+  return(output)
+}
+in.tri.rev <- function (tr=matrix(c(0,0.5,1, 0,1,0), nrow=3), xy.points) in.triangle (xy.points, tr)
