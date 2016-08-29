@@ -5,7 +5,7 @@
 ###Further patches by Philip Bulsink ( bulsinkp@gmail.com )
 require(nhlscrapr)
 ### Now works for extra seasons
-full.game.database = function (extra.seasons = 0) 
+full.game.database <- function (extra.seasons = 0) 
 {
     game.roster <- NULL
     seasons <- c("20022003", "20032004", "20052006", "20062007", "20072008", "20082009", "20092010", "20102011", "20112012", "20122013", "20132014", "20142015", "20152016")
@@ -94,7 +94,7 @@ full.game.database = function (extra.seasons = 0)
 
 
 ### Fixed some indexing crashes, and some crashes for players with 0 events
- player.summary = function (grand.data, roster.unique) 
+ player.summary <- function (grand.data, roster.unique) 
 {
     events <- c("PENL", "SHOT", "GOAL", "MISS", "BLOCK")
     columns <- 3 + c(5:16, 18:20, 28:29)
@@ -157,7 +157,7 @@ full.game.database = function (extra.seasons = 0)
 
 require(plyr)
 
-aggregate_roster_by_name = function(roster)
+aggregate.roster.by.name <- function(roster)
 {
 
 	roster_name = ddply(roster, .(firstlast), summarize,
@@ -346,6 +346,12 @@ compile.all.games<-function (rdata.folder = "nhlr-data", output.folder = "source
                                                           "/nhlscrapr-core.RData"))
   return(TRUE)
 }
+
+
+###
+#
+#
+###
 
 construct.rosters.from.list <- function (roster.collection,  #raw list
                                          roster.master=NULL) {
