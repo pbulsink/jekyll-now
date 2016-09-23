@@ -1,0 +1,67 @@
+---
+title: "NHL Elo"
+author: "Philip Bulsink"
+date: "September 23, 2016"
+output: html_document
+status: process
+published: true
+layout: post
+excerpt_separator: <!--more-->
+tags: R hockey predicting Dixon-Coles 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Predicting scores (and seasons) by Dixon-Coles is interesting, but it's one of many ways of doing 'game-level' predictions. There's a family of rating systems called [Elo](https://en.wikipedia.org/wiki/Elo_rating_system), which was originally developed to rank chess players. There are a number of extensions of Elo, including some modifications to parameters by the World Chess Federation ([FIDE](https://en.wikipedia.org/wiki/FIDE)), a modification including uncertainty and 'reliability' called [Glicko](https://en.wikipedia.org/wiki/Glicko_rating_system), and a more parameterized version of Glicko developed in 2012 called Stephenson. These are all implemented in the `PlayerRatings` package in R. There's also an modification of Glicko developed by Microsoft called [TrueSkill](http://research.microsoft.com/en-us/projects/trueskill) and this is implemented in the aptly named `trueskill` package. Note that TrueSkill is a closed licence product, available only for non-commercial implementations.
+
+We'll compare all of these methods for their historical performance in NHL, as well as (eventually) go into predicting the coming season.
+
+<!--more-->
+
+```{r}
+library(PlayerRatings)
+library(trueskill)
+
+nhl_all<-as.data.frame(readRDS("./_data/hockeyData.Rds"))
+```
+
+For the PlayerRatings package, we'll need to add one column to our data, the 'result' in respect to who won the game. If the home team wins, that result value should be 1. If the away wins, the value should be 0. Logically, draws should be given a 0.5, but there's other ways of viewing this that I'll test (could OT wins be a win, but SO wins a draw?). 
+
+```{r results_column}
+nhl_all$Result<-apply(nhl_all, 1, function(x) ifelse(x[3] > x[5], 1, ifelse(x[3]<x[5],0,0.5)))
+```
+
+There's a nuance to the code as well that prefers dates input as a "numerical vector denoting the time period in which the game took place" instead of dates proper. This allows such analysis as week-by-week analysis for NFL games, or the monthly chess rankings, but doesn't work as well for our hockey games in which a team may be a few games behind or ahead of the competition. 
+
+```{r date_vector}
+dates<-unique(sort(nhl_all$Date))
+nhl_all$DateFactor<-apply(nhl_all, 1, function(x) which(dates == x[1]))
+```
+
+We'll wrangle only the data we need:
+
+```{r}
+nhl_results<-nhl_all[,c(13,2,4,12)]
+nhl_results$Visitor<-as.character(nhl_results$Visitor)
+nhl_results$Home<-as.character(nhl_results$Home)
+```
+
+The PlayerRatings code then chews on games by each day, taking an input of the prior ratings as well as the games on that day. We'll process the whole history of the NHL for base ELO like this. Note that there are none of the common adjustors, such as regressions to the mean after each season, nor importance factors of playoff vs. regular season games, nor home ice advantage, nor adjustments for the win margin (no benefit to winning 6-1 vs. 2-1 in OT). We'll use a k factor of 8, which splits the difference between the commonly used 20 for football, and 4 for baseball, and is a commonly accepted k for hockey.
+
+```{r base_elo}
+nhlelo<-elo(nhl_results, init=1500, kfac=8, history=TRUE)
+nhlelo$ratings[nhlelo$ratings$Lag < 100,c(1,2)]
+```
+
+Similarly, we can get the Glicko and Stephenson ratings:
+```{r other_elo}
+nhlglicko<-glicko(nhl_results, init=c(1500, 300), kfac=8, history=TRUE)
+print("Glicko Ratings:")
+nhlglicko$ratings[nhlglicko$ratings$Lag < 100,c(1,2)]
+nhlsteph<-steph(nhl_results, init=c(1500, 300), kfac=8, history=TRUE)
+print("Stephenson Ratings:")
+nhlsteph$ratings[nhlsteph$ratings$Lag < 100,c(1,2)]
+```
+
