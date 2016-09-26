@@ -7,7 +7,7 @@ status: publish
 published: true
 layout: post
 excerpt_separator: <!--more-->
-tags: R hockey predicting Evaluating Dixon-Coles
+tags: R hockey predicting evaluating Dixon-Coles
 ---
 
  

@@ -7,7 +7,7 @@ status: publish
 published: true
 layout: post
 excerpt_separator: <!--more-->
-tags: R hockey visualizations predictions
+tags: R hockey visualizations predicting
 ---
  
 
@@ -19,7 +19,7 @@ Luckily, R has some great visualization tools in `ggplot2`. I'll demonstrate som
  
 Looking at the data inspired me to match the stacked probability curves used by fivethirtyeight in posts [like these](https://fivethirtyeight.com/features/florida-ohio-democratic-primary-preview/). 
  
-To do this, using ggplot's `facet` feature, I needed to reshape the data. a simiple forloop and lapply gets me what I need:
+To do this, using ggplot's `facet` feature, I needed to reshape the data. A simiple forloop and lapply gets me what I need:
  
 
  
