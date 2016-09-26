@@ -1,0 +1,18 @@
+---
+title: "Chemistry Intro"
+author: "Philip Bulsink"
+date: "September 26, 2016"
+output: html_document
+status: process
+published: true
+layout: post
+excerpt_separator: <!--more-->
+tags: introduction chemistry 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Along with playing around with hockey data, my real job is doing chemistry. Sometimes, this blog will contain work from that field, discussing tools I use or have written, papers that I find interesting, or other cool stuff. I say this, because I've started working on a few posts that will trickle out slowly interspersed in the hockey. To easily find these types of post, use the Tags feature, and look for 'chemistry'.
+
