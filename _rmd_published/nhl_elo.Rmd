@@ -14,15 +14,14 @@ tags: R hockey predicting Dixon-Coles
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Predicting scores (and seasons) by Dixon-Coles is interesting, but it's one of many ways of doing 'game-level' predictions. There's a family of rating systems called [Elo](https://en.wikipedia.org/wiki/Elo_rating_system), which was originally developed to rank chess players. There are a number of extensions of Elo, including some modifications to parameters by the World Chess Federation ([FIDE](https://en.wikipedia.org/wiki/FIDE)), a modification including uncertainty and 'reliability' called [Glicko](https://en.wikipedia.org/wiki/Glicko_rating_system), and a more parameterized version of Glicko developed in 2012 called Stephenson. These are all implemented in the `PlayerRatings` package in R. There's also an modification of Glicko developed by Microsoft called [TrueSkill](http://research.microsoft.com/en-us/projects/trueskill) and this is implemented in the aptly named `trueskill` package. Note that TrueSkill is a closed licence product, available only for non-commercial implementations.
+Predicting scores (and seasons) by Dixon-Coles is interesting, but it's one of many ways of doing 'game-level' predictions. There's a family of rating systems called [Elo](https://en.wikipedia.org/wiki/Elo_rating_system), which was originally developed to rank chess players. There are a number of extensions of Elo, including some modifications to parameters by the World Chess Federation ([FIDE](https://en.wikipedia.org/wiki/FIDE)), a modification including uncertainty and 'reliability' called [Glicko](https://en.wikipedia.org/wiki/Glicko_rating_system), and a more parameterized version of Glicko developed in 2012 called Stephenson. These are all implemented in the `PlayerRatings` package in R. There's also an modification of Glicko developed by Microsoft called [TrueSkill](http://research.microsoft.com/en-us/projects/trueskill) and this is implemented in the aptly named `trueskill` package. Note that TrueSkill is a closed licence product, available only for non-commercial implementations. 
 
-We'll compare all of these methods for their historical performance in NHL, as well as (eventually) go into predicting the coming season.
+We'll compare all of these methods for their historical performance in NHL, as well as (eventually) go into predicting the coming season. TrueSkill has a few oddities, so we'll look at it later.
 
 <!--more-->
 
 ```{r}
 library(PlayerRatings)
-library(trueskill)
 
 nhl_all<-as.data.frame(readRDS("./_data/hockeyData.Rds"))
 ```
@@ -52,16 +51,43 @@ The PlayerRatings code then chews on games by each day, taking an input of the p
 
 ```{r base_elo}
 nhlelo<-elo(nhl_results, init=1500, kfac=8, history=TRUE)
-nhlelo$ratings[nhlelo$ratings$Lag < 100,c(1,2)]
+kable(nhlelo$ratings[nhlelo$ratings$Lag < 100,c(1,2)], caption="NHL Elo Ratings")
 ```
 
 Similarly, we can get the Glicko and Stephenson ratings:
 ```{r other_elo}
 nhlglicko<-glicko(nhl_results, init=c(1500, 300), kfac=8, history=TRUE)
-print("Glicko Ratings:")
-nhlglicko$ratings[nhlglicko$ratings$Lag < 100,c(1,2)]
+kable(nhlglicko$ratings[nhlglicko$ratings$Lag < 100,c(1,2)], caption="NHL Glicko Ratings")
 nhlsteph<-steph(nhl_results, init=c(1500, 300), kfac=8, history=TRUE)
-print("Stephenson Ratings:")
-nhlsteph$ratings[nhlsteph$ratings$Lag < 100,c(1,2)]
+kable(nhlsteph$ratings[nhlsteph$ratings$Lag < 100,c(1,2)], caption="NHL Stephenson Ratings")
 ```
 
+Note that we've dropped the historic NHL teams, and this may account for some of the deviation from the average being 1500. For a better idea of the current state of teams, we'll look at data from 1991-92 onwards, when the San Jose Sharks joined the league.
+
+```{r shorter_elo}
+nhl_recent<-nhl_all[nhl_all$Date>as.Date("1991-07-01"),]
+dates<-unique(sort(nhl_recent$Date))
+nhl_recent$DateFactor<-apply(nhl_recent, 1, function(x) which(dates == x[1]))
+nhl_results<-nhl_recent[,c(13,2,4,12)]
+nhl_results$Visitor<-as.character(nhl_results$Visitor)
+nhl_results$Home<-as.character(nhl_results$Home)
+
+recent_elo<-elo(nhl_results, init=1500, kfac=8, history=TRUE)
+recent_glicko<-glicko(nhl_results, init=c(1500, 300), kfac=8, history=TRUE)
+recent_steph<-steph(nhl_results, init=c(1500, 300), kfac=8, history=TRUE)
+```
+
+These result in the following:
+```{r echo=False}
+recent_elo
+```
+
+```{r echo=False}
+recent_glicko
+```
+
+```{r echo=False}
+recent_steph
+```
+
+Later I'll look at TrueSkill, and check Elo ratings for predictive power.
