@@ -78,16 +78,16 @@ recent_steph<-steph(nhl_results, init=c(1500, 300), kfac=8, history=TRUE)
 ```
 
 These result in the following:
-```{r echo=False}
+```{r echo=FALSE}
 recent_elo
 ```
 
-```{r echo=False}
+```{r echo=FALSE}
 recent_glicko
 ```
 
-```{r echo=False}
+```{r echo=FALSE}
 recent_steph
 ```
 
-Later I'll look at TrueSkill, and check Elo ratings for predictive power.
+It looks like both Glicko and Stephenson ratings are 'high' compared to the primary Elo score. Checking the average of this proves to be correct, with Glicko averaging `r mean(recent_glicko$ratings$Rating)` and Stephenson averaging `r mean(recent_steph$ratings$Rating)`. This is not ideal, Elo should, by nature, remain centred around your starting value. Additionally, there's no normalization at the end of every season, this is a common feature in sports team predictions (vs individual rankings in chess, as Elo was developed for). Next post we'll build our own Elo ranking that corrects for these and more. 
