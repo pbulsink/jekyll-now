@@ -10,3 +10,25 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Last time, we looked at Elo ratings for NHL teams. We saw that the more fancy Elo ratings didn't keep the average constant, that is, ratings were inflated through time. As well, they didn't take into consideration any summertime normalization, whereby the elo ratings were adjusted towards the mean as is very common in sports Elo. Any other common adjustments, such as placing increased rating on playoff games, aren't contained therein either. I'll look into developing a set of those tools, and applying them in this post. 
+
+When two teams play eachother, their Elo 'score' is both an expectation of who will win, as well as a component of how the scores move afterwards. For example, if a highly ranked team loses to a very poorly ranked team, the change in Elo for both teams will be much more than if two teams that are similarly ranked play eachother. 
+Elo is calculated first by getting an expected win chance, then comparing the expected to the actual performance of each team.
+
+$E_A = \frac 1 {1 + 10^{(R_B - R_A)/400}}$
+
+$E_B = \frac 1 {1 + 10^{(R_A - R_B)/400}}$
+
+Where $E_A$ and $E_B$ are the expected chance of winning (actually the expected score ratio), and $R_A$ and $R_B$ are the rating of team A and B, respectively. Note that $E_A + E_B = 1$. 
+
+Once this is calculated, these values are compared to the actual results. Results for each game are either 0, 0.5, or 1, corresponding to a win by team B, a draw, or a win by team A.
+
+The new rating or team A ($R_A^/prime$) is thus:
+
+$R_A^\prime = R_A + K(S_A - E_A)$
+
+where $S_A$ is the actual result of the game, and $K$ is a factor determining by how much scores can move in each game. I'll talk about that later, but we'll start with $K = 8$. Similarly for team B $R_B^\prime = R_B + K(S_B - E_B)$, where $S_B = 1 - S_A$. Note that the absolute change in score for each team is the same, so that the average of the league is unmoved.
+
+For example, two teams are playing eachother, team A has a rating of 1600, and team B has a rating of 1450. For this scenario, $E_A = 0.7034$ and $E_B = 0.2966$. If team B wins, then the new rating of A is $R_A^\prime = 1594$ and, similarly, $R_B=1456$ for B. Both teams moved by 6 points (well, 5.6 points, but we'll keep it as integers for now).
+
+Teams who are ranked evenly would move 4 points. If an underdog team won with 0.05 chance of doing so, the rank change would be 8 (actually 7.6), but if the expected team won, the change would be too small to move the ranking on an integer basis.
+
