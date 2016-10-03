@@ -1,0 +1,12 @@
+---
+title: "New Elo for NHL"
+author: "Philip Bulsink"
+date: '2016-10-02'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Last time, we looked at Elo ratings for NHL teams. We saw that the more fancy Elo ratings didn't keep the average constant, that is, ratings were inflated through time. As well, they didn't take into consideration any summertime normalization, whereby the elo ratings were adjusted towards the mean as is very common in sports Elo. Any other common adjustments, such as placing increased rating on playoff games, aren't contained therein either. I'll look into developing a set of those tools, and applying them in this post. 
