@@ -12,6 +12,8 @@ tags: R hockey
 
 While working on a new Elo rankings posts, I played around with data to determine a good value for home ice advantage (in terms of winning percentage). That value has changed drastically over the years, and I thought it was interesting, so I'd put it up here. 
 
+<!--more-->
+
 ```{r home_ice_advantage, echo=FALSE, warning=FALSE}
 library(ggplot2)
 nhl_all<-as.data.frame(readRDS("./_data/hockeyData.Rds"))
