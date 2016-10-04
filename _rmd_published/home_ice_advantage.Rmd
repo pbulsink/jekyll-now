@@ -1,0 +1,33 @@
+---
+title: "Home Ice Advantage"
+author: "Philip Bulsink"
+date: "October 03, 2016"
+output: html_document
+status: process
+published: true
+layout: post
+excerpt_separator: <!--more-->
+tags: R hockey
+---
+
+While working on a new Elo rankings posts, I played around with data to determine a good value for home ice advantage (in terms of winning percentage). That value has changed drastically over the years, and I thought it was interesting, so I'd put it up here. 
+
+```{r home_ice_advantage, echo=FALSE, warning=FALSE}
+library(ggplot2)
+nhl_all<-as.data.frame(readRDS("./_data/hockeyData.Rds"))
+
+nhl_all$Result<-apply(nhl_all, 1, function(x) ifelse(x[3] > x[5], 0, ifelse(x[3]<x[5],1,0.5)))
+
+advantage<-c()
+
+for(i in c(1917:2015)){
+    j=mean(nhl_all[nhl_all$Date > as.Date(paste0(i,"-08-01")) & nhl_all$Date < as.Date(paste0(i+1,"-08-01")),]$Result)
+    advantage<-c(advantage, j)
+}
+
+adv_df<-data.frame(year=c(1917:2015), advantage=advantage)
+
+ggplot(adv_df, aes(year, advantage)) + geom_point() + stat_smooth(method="lm") + xlab("Year") + ylab("Home Ice Advantage (Win %)") + ggtitle("Home Ice Advantage by Year in the NHL and WHA")
+```
+
+While the trend has tightened up recently, and seemed to settle near 0.55, it's interesting to see that in 1918-1919 the home ice advantage was 0.75, even though they played a 70 game season!
