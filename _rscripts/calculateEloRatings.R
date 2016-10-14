@@ -70,12 +70,15 @@ newRankings<-function(home_rank, away_rank, result, k=8){
 
 #'Split dates to by season if multiple seasons are calculated together
 #'
-#' @param game_dates The dates of games to be split by season.
+#' @param game_dates The dates of games to be split by season as a vector of Dates, or as a df with dates in game_dates$Date.
 #' @return A list of vectors of dates.
 splitDates<-function(game_dates) {
     if (is.data.frame(game_dates)){
         game_dates<-as.date(game_dates$Date)
     }
+
+    stopifnot(class(game_dates) == "Date")
+
     start_year<-as.numeric(format(game_dates[1],'%Y'))
     end_year<-as.numeric(format(game_dates[length(game_dates)], '%Y'))
     if (end_year-start_year <= 1){
