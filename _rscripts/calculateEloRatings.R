@@ -1,12 +1,12 @@
 #' Calculate Elo Ratings for a series of games
 #'
 #' @param schedule A four column schedule, containing [Date, HomeTeam, AwayTeam, Result [0, 0.5, 1]].
-#' @param ratings_history optional: A past history of team ranking, to be expanded. Default: None
+#' @param ratings_history optional: A past history of team ranking, to be expanded, as eloHist object. Default: None
 #' @param k optional: The Elo K value. Default: 8
 #'# @param playoffs_boost optional: A boolean whether or not to enahnce importance of playoff games. Default: False
 #' @param mean_value optional: The mean value to regress results to at the end of the season. Default: 1500
 #' @param new_teams optional: The ranking that new teams should have. Default: 1500
-#' @return The Elo Rating for each team through time.
+#' @return The Elo Rating for each team through time as eloHist object
 #' @examples
 #' calculateEloRatings(nhl20102011)
 #' calculateEloRatings(nhl20152016, ratings_history=hist_elo, k=10, mean_value=1505, new_teams=1350)
@@ -20,8 +20,10 @@ calculateEloRatings<-function(schedule, ratings_history=NULL, k=8, playoffs_boos
     if(!ratings_history){
         ratings_history=data.frame(rep(new_teams, nteams))
         rownames(ratings_history)<-team_names
+        class(ratings_history)<-'eloHist'
     }
-
+    
+    stopifnot(class(ratings_history) == 'eloHist')
     stopifnot(is.integer(k), k <= 0, k > 100)
     stopifnot(is.integer(mean_value))
     stopifnot(is.integer(new_teams))
@@ -41,6 +43,8 @@ calculateEloRatings<-function(schedule, ratings_history=NULL, k=8, playoffs_boos
         #Update Elos
         #Try Detect Season Breaks
             #If Season, regress to mean
+    
+    return(ratings_history)
 }
 
 
@@ -62,10 +66,11 @@ predictEloResult<-function(home_rank, away_rank){
 #' @param k optional: The Elo K value. Default: 8
 #' @return A vector with two new ratings for Home and Away team, respectively
 #' @example newRankings(1350, 1625, 0)
-newRankings<-function(home_rank, away_rank, result, k=8){
+newRankings<-function(home_rank, away_rank, result, k=8) {
     #result is in set [0, 0.5, 1]
-    d_rank<-k*(result - predictEloResult(home_rank, away_rank))
-    return(c(home_rank+d_rank, away_rank-d_rank))
+    h_rank<-home_rank + k*(result - predictEloResult(home_rank, away_rank))
+    a_rank<-away_rank + k*((1-result) - (1 - predictEloResult(home_rank, away_rank)))
+    return(c(h_rank, a_rank))
 }
 
 #'Split dates to by season if multiple seasons are calculated together
@@ -92,4 +97,16 @@ splitDates<-function(game_dates) {
         }
     }
     return(split_dates)
+}
+
+#'Calculate 1 season worth of elo
+#'
+.eloSeason<-function(){
+  
+}
+
+#' Regress to mean, typically at end of season
+#' 
+.regressToMean<-function(rmean=1500, rstrength=3){
+  
 }
