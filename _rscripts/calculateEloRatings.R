@@ -10,40 +10,39 @@
 #' @examples
 #' calculateEloRatings(nhl20102011)
 #' calculateEloRatings(nhl20152016, ratings_history=hist_elo, k=10, mean_value=1505, new_teams=1350)
-calculateEloRatings<-function(schedule, ratings_history=NULL, k=8, playoffs_boost=FALSE, mean_value=1500, new_teams=1500)
-{
-    #Ensuring Opts are ok.
+calculateEloRatings <- function(schedule, ratings_history = NULL, k = 8, playoffs_boost = FALSE, mean_value = 1500, new_teams = 1500) {
+    # Ensuring Opts are ok.
     stopifnot(ncol(schedule) == 4, nrow(schedule) > 0)
-    team_names=unique(c(schedule$HomeTeam, schedule$AwayTeam))
-    nteams<-length(team_names)
+    team_names = unique(c(schedule$HomeTeam, schedule$AwayTeam))
+    nteams <- length(team_names)
 
-    if(!ratings_history){
-        ratings_history=data.frame(rep(new_teams, nteams))
-        rownames(ratings_history)<-team_names
-        class(ratings_history)<-'eloHist'
+    if (!ratings_history) {
+        ratings_history = data.frame(rep(new_teams, nteams))
+        rownames(ratings_history) <- team_names
+        class(ratings_history) <- "eloHist"
     }
-    
-    stopifnot(class(ratings_history) == 'eloHist')
+
+    stopifnot(class(ratings_history) == "eloHist")
     stopifnot(is.integer(k), k <= 0, k > 100)
     stopifnot(is.integer(mean_value))
     stopifnot(is.integer(new_teams))
     stopifnot(is.logical(playoffs_boost))
 
-    #Massage Data & Extract Extras
-    cnames(schedule)<-c("Date", "HomeTeam", "AwayTeam", "Result")
-    game_dates<-sort(unique(schedule$Date))
-    split_dates<-splitDates(game_dates)
+    # Massage Data & Extract Extras
+    cnames(schedule) <- c("Date", "HomeTeam", "AwayTeam", "Result")
+    game_dates <- sort(unique(schedule$Date))
+    split_dates <- splitDates(game_dates)
 
-    #If possible, get current ELOs
+    stopifnot(length(splitDates) > 0)
 
+    if (length(split_dates) >= 2) {
+        for (i in c(1:length(split_dates - 1))) {
+            ratings_history <- .eloSeason((schedule[schedule$Date %in% unique(split_dates[i]), ]))
+            ratings_history <- .regressToMean(ratings_history, rmean = mean_value, rdate = split_dates[[i + 1]][1] - 1)
+        }
+    }
+    ratings_history <- .eloSeason((schedule[schedule$Date %in% unique(split_dates[length(split_dates)]), ]))
 
-    #For unique date in all dates
-        #For each game in date
-            #Calculate new Elos
-        #Update Elos
-        #Try Detect Season Breaks
-            #If Season, regress to mean
-    
     return(ratings_history)
 }
 
@@ -54,8 +53,8 @@ calculateEloRatings<-function(schedule, ratings_history=NULL, k=8, playoffs_boos
 #' @param away_rank The ranking of the Away Team.
 #' @return A number between 0 and 1 corresponding to the win chances of the Home Team.
 #' @example predictEloResult(1350, 1625)
-predictEloResult<-function(home_rank, away_rank){
-    return(1/(1+(10^((away_rank-home_rank)/400))))
+predictEloResult <- function(home_rank, away_rank) {
+    return(1/(1 + (10^((away_rank - home_rank)/400))))
 }
 
 #' Calculate the new ranking of both teams after an interaction
@@ -66,47 +65,61 @@ predictEloResult<-function(home_rank, away_rank){
 #' @param k optional: The Elo K value. Default: 8
 #' @return A vector with two new ratings for Home and Away team, respectively
 #' @example newRankings(1350, 1625, 0)
-newRankings<-function(home_rank, away_rank, result, k=8) {
-    #result is in set [0, 0.5, 1]
-    h_rank<-home_rank + k*(result - predictEloResult(home_rank, away_rank))
-    a_rank<-away_rank + k*((1-result) - (1 - predictEloResult(home_rank, away_rank)))
+newRankings <- function(home_rank, away_rank, result, k = 8) {
+    # result is in set [0, 0.5, 1]
+    h_rank <- home_rank + k * (result - predictEloResult(home_rank, away_rank))
+    a_rank <- away_rank + k * ((1 - result) - (1 - predictEloResult(home_rank, away_rank)))
     return(c(h_rank, a_rank))
 }
 
 #'Split dates to by season if multiple seasons are calculated together
 #'
 #' @param game_dates The dates of games to be split by season as a vector of Dates, or as a df with dates in game_dates$Date.
+#' @param season_split The annual date by which to split seasons. As string '-MM-DD' format. For NHL, August 1 is chosen, so '-08-01'
 #' @return A list of vectors of dates.
-splitDates<-function(game_dates) {
-    if (is.data.frame(game_dates)){
-        game_dates<-as.date(game_dates$Date)
+splitDates <- function(game_dates, season_split = "-08-01") {
+    if (is.data.frame(game_dates)) {
+        game_dates <- sort(unique(as.Date(game_dates$Date)))
     }
 
     stopifnot(class(game_dates) == "Date")
 
-    start_year<-as.numeric(format(game_dates[1],'%Y'))
-    end_year<-as.numeric(format(game_dates[length(game_dates)], '%Y'))
-    if (end_year-start_year <= 1){
+    start_year <- as.numeric(format(game_dates[1], "%Y"))
+    end_year <- as.numeric(format(game_dates[length(game_dates)], "%Y"))
+    if (end_year - start_year <= 1) {
         return(list(game_dates))
     }
-    split_dates<-vector("list", length = end_year-start_year)
-    for(i in c(1:end_year-start_year)){
-        s<-game_dates[game_dates > as.Date(paste0(i+start_year-1, "-08-01")) & game_dates < as.Date(paste0(i+start_year, "-07-31"))]
-        if(!length(s)==0) {
-            split_dates[[i]]<-s
+    split_dates <- rep(NULL, end_year - start_year)
+    for (i in c(1:end_year - start_year)) {
+        s <- game_dates[game_dates >= as.Date(paste0(i + start_year - 1, season_split)) & game_dates < as.Date(paste0(i + start_year, season_split))]
+        if (!length(s) == 0) {
+            split_dates[[i]] <- s
         }
     }
+
+    # This removes null (unfilled) 'years' in the data.
+    split_dates <- split_dates[!sapply(split_dates, is.null)]
+
     return(split_dates)
 }
 
 #'Calculate 1 season worth of elo
 #'
-.eloSeason<-function(){
-  
+.eloSeason <- function() {
+
 }
 
-#' Regress to mean, typically at end of season
-#' 
-.regressToMean<-function(rmean=1500, rstrength=3){
-  
+#' Regress to mean, typically at end of season, but at any rdate.
+#'
+.regressToMean <- function(ratings_history, rmean = 1500, rstrength = 3, rdate = NULL) {
+    if (is.null(rdate)) {
+        rdate = as.Date(ratings_history[nrow(ratings_history), "Date"] + 1)
+    }
+    #stopifnot(class(rdate) == "Date")
+
+    ratings <- as.numeric(ratings_history[nrow(ratings_history), c(2:ncol(ratings_history))])
+    newratings <- (ratings * rstrength + rmean)/(rstrength + 1)
+    ratings_history[nrow(ratings_history) + 1, "Date"]<-rdate
+    ratings_history[nrow(ratings_history), c(2:ncol(ratings_history))] <- newratings
+    return(ratings_history)
 }
