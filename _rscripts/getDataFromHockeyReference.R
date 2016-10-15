@@ -84,7 +84,7 @@ getAndSaveNHLGames <- function(start = 1918, end = 2017, wait = 30) {
         message("Can't collect 2004-2005. No season due to lockout. Collecting to 2003-2004 to there.")
         end <- 2004
     }
-
+    
     for (i in c(start:end)) {
         # No season in 2004-2005. Don't try process that year.
         if (i == 2005) {
