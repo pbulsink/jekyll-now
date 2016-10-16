@@ -2,7 +2,7 @@
 context("Testing Elo Code")
 
 test_that("Test Predicting Elo Result", {
-    # Test the Elo Result Predicting Engine
+    # Test the Elo Result Predicting Engine, within tolerance of 1e-06
     expect_equal(predictEloResult(1500, 1500), 0.5)
     expect_equal(predictEloResult(2000, 1200), 0.9901, tolerance = 1e-06)
     expect_equal(predictEloResult(1200, 2000), 0.0099, tolerance = 1e-06)
@@ -32,6 +32,8 @@ test_that("Test Date Separator", {
 test_that("Test Regression To Mean", {
     #Test that the regression to the mean is proper. That dates are properly accepted or applied
     testdf<-data.frame("Date"=c(as.Date("2012-01-05"), as.Date("2012-09-05")), "TeamA"=c(1450, 1500), "TeamB"=c(1500, 1450), "TeamC"=c(1650, 1700))
+
+    #hand-calculated answers
     answerdf1<-data.frame("Date"=c(as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2012-09-06")), "TeamA"=c(1450, 1500, 1500), "TeamB"=c(1500, 1450, 1462.5), "TeamC"=c(1650, 1700, 1650))
     answerdf2<-data.frame("Date"=c(as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2012-09-12")), "TeamA"=c(1450, 1500, 1500), "TeamB"=c(1500, 1450, 1475), "TeamC"=c(1650, 1700, 1600))
     answerdf3<-data.frame("Date"=c(as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2012-09-06")), "TeamA"=c(1450, 1500, 1487.5), "TeamB"=c(1500, 1450, 1450), "TeamC"=c(1650, 1700, 1637.5))
@@ -40,3 +42,10 @@ test_that("Test Regression To Mean", {
     expect_equal(.regressToMean(testdf, rstrength=1, rdate=as.Date("2012-09-12")), answerdf2)
     expect_equal(.regressToMean(testdf, rmean=1450), answerdf3)
 })
+
+test_that("Test Load and Preparation of Elo Data", {
+    #Test that loadEloData properly munches on crispy data files
+    #Test that the prepareEloData correctly munches data, splits past and present
+
+})
+
