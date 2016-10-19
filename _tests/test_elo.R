@@ -6,7 +6,7 @@ test_that("Test Predicting Elo Result", {
     expect_equal(predictEloResult(1500, 1500), 0.5)
     expect_equal(predictEloResult(2000, 1200), 0.9901, tolerance = 1e-06)
     expect_equal(predictEloResult(1200, 2000), 0.0099, tolerance = 1e-06)
-
+    
 })
 
 test_that("Test New Elo Ratings", {
@@ -18,34 +18,53 @@ test_that("Test New Elo Ratings", {
     expect_equal(newRankings(2400, 2000, 0, k = 32), c(2370.9091, 2029.0909))
     expect_equal(newRankings(2000, 1200, 1), c(2000.0792, 1199.9208))
     expect_equal(newRankings(2000, 1200, 0), c(1992.0792, 1207.9208))
-
+    
 })
 
 test_that("Test Date Separator", {
     # test that the dates are properly separated by season.
     datelist1 <- c(as.Date("2012-01-05"), as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2011-11-20"), as.Date("2013-01-05"), as.Date("2015-01-05"))
     datelist1 <- sort(datelist1)
-    expect_equal(splitDates(datelist1), list(c(as.Date("2011-11-20"), as.Date("2012-01-05"), as.Date("2012-01-05")), c(as.Date("2012-09-05"), as.Date("2013-01-05")),
+    expect_equal(splitDates(datelist1), list(c(as.Date("2011-11-20"), as.Date("2012-01-05"), as.Date("2012-01-05")), c(as.Date("2012-09-05"), as.Date("2013-01-05")), 
         c(as.Date("2015-01-05"))))
 })
 
 test_that("Test Regression To Mean", {
-    #Test that the regression to the mean is proper. That dates are properly accepted or applied
-    testdf<-data.frame("Date"=c(as.Date("2012-01-05"), as.Date("2012-09-05")), "TeamA"=c(1450, 1500), "TeamB"=c(1500, 1450), "TeamC"=c(1650, 1700))
-
-    #hand-calculated answers
-    answerdf1<-data.frame("Date"=c(as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2012-09-06")), "TeamA"=c(1450, 1500, 1500), "TeamB"=c(1500, 1450, 1462.5), "TeamC"=c(1650, 1700, 1650))
-    answerdf2<-data.frame("Date"=c(as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2012-09-12")), "TeamA"=c(1450, 1500, 1500), "TeamB"=c(1500, 1450, 1475), "TeamC"=c(1650, 1700, 1600))
-    answerdf3<-data.frame("Date"=c(as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2012-09-06")), "TeamA"=c(1450, 1500, 1487.5), "TeamB"=c(1500, 1450, 1450), "TeamC"=c(1650, 1700, 1637.5))
-
+    # Test that the regression to the mean is proper. That dates are properly accepted or applied
+    testdf <- data.frame(Date = c(as.Date("2012-01-05"), as.Date("2012-09-05")), TeamA = c(1450, 1500), TeamB = c(1500, 1450), TeamC = c(1650, 1700))
+    
+    # hand-calculated answers
+    answerdf1 <- data.frame(Date = c(as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2012-09-06")), TeamA = c(1450, 1500, 1500), TeamB = c(1500, 
+        1450, 1462.5), TeamC = c(1650, 1700, 1650))
+    answerdf2 <- data.frame(Date = c(as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2012-09-12")), TeamA = c(1450, 1500, 1500), TeamB = c(1500, 
+        1450, 1475), TeamC = c(1650, 1700, 1600))
+    answerdf3 <- data.frame(Date = c(as.Date("2012-01-05"), as.Date("2012-09-05"), as.Date("2012-09-06")), TeamA = c(1450, 1500, 1487.5), TeamB = c(1500, 
+        1450, 1450), TeamC = c(1650, 1700, 1637.5))
+    
     expect_equal(.regressToMean(testdf), answerdf1)
-    expect_equal(.regressToMean(testdf, rstrength=1, rdate=as.Date("2012-09-12")), answerdf2)
-    expect_equal(.regressToMean(testdf, rmean=1450), answerdf3)
+    expect_equal(.regressToMean(testdf, rstrength = 1, rdate = as.Date("2012-09-12")), answerdf2)
+    expect_equal(.regressToMean(testdf, rmean = 1450), answerdf3)
 })
 
 test_that("Test Load and Preparation of Elo Data", {
-    #Test that loadEloData properly munches on crispy data files
-    #Test that the prepareEloData correctly munches data, splits past and present
+    # Test that loadEloData properly munches on crispy data files Test that the prepareEloData correctly munches data, splits past and present
+    
+})
 
+test_that("Test meta Statistics", {
+    # Test that the meta statistics are correct
+    testdf <- data.frame(Date = c(as.Date("2012-01-05"), as.Date("2012-01-06"), as.Date("2012-01-07"), as.Date("2012-01-08"), as.Date("2012-01-09"), 
+        as.Date("2012-01-15")), TeamA = c(10, 9, 10, 11, 10, 10), TeamB = c(10, 6, 6, 5, 6, 9), TeamC = c(8, 7, 12, 7, 8, 6))
+    
+    # Hand-calculated Answers
+    answer <- list(mean = 8.33333333, max_team = "TeamC", max_date = as.Date("2012-01-07"), max_val = 12, min_team = "TeamB", min_date = as.Date("2012-01-08"), 
+        min_val = 5, best_team = "TeamA", best_team_avg = 10, worst_team = "TeamB", worst_team_avg = 7)
+    
+    answer2 <- list(mean = 8.33333333, max_team = "TeamC", max_date = as.Date("2012-01-07"), max_val = 12, min_team = "TeamB", min_date = as.Date("2012-01-08"), 
+        min_val = 5, best_team = "TeamA", best_team_avg = 10, worst_team = "TeamB", worst_team_avg = 6.6)
+    
+    expect_equal(metaElo(testdf), answer)
+    expect_equal(metaElo(testdf, c(as.Date("2012-01-05"), as.Date("2012-01-06"), as.Date("2012-01-07"), as.Date("2012-01-08"), as.Date("2012-01-09"))), 
+        answer2)
 })
 
