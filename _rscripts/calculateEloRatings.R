@@ -3,49 +3,79 @@
 #' @param schedule A four column schedule, containing [Date, HomeTeam, AwayTeam, Result [0, 0.25, 0.4, 0.50, 0.6, 0.75, 1]].
 #' @param ratings_history optional: A past history of team ranking, to be expanded Default: None
 #' @param k optional: The Elo K value. Default: 8
-#'# @param playoffs_boost optional: A boolean whether or not to enahnce importance of playoff games. Default: False
 #' @param mean_value optional: The mean value to regress results to at the end of the season. Default: 1500
 #' @param new_teams optional: The ranking that new teams should have. Default: 1500
+#' @param regress_strength optional: The amount by which to regress to mean. Set = 0 to turn off regression. Default: 3 (1/3 regression to mean.)
 #'
 #' @return The Elo Rating for each team through time
 #' @examples
 #' calculateEloRatings(nhl20102011)
 #' calculateEloRatings(nhl20152016, ratings_history=hist_elo, k=10, mean_value=1505, new_teams=1350)
-calculateEloRatings <- function(schedule, ratings_history = NULL, k = 8, playoffs_boost = FALSE, mean_value = 1500, new_teams = 1500, meta = TRUE) {
+calculateEloRatings <- function(schedule, ratings_history = NULL, k = 8, mean_value = 1500, new_teams = 1500, meta = TRUE, regress_strength=3) {
     # Ensuring Opts are ok.
     stopifnot(ncol(schedule) == 4, nrow(schedule) > 0)
+    names(schedule) <- c("Date", "HomeTeam", "AwayTeam", "Result")
+    schedule$HomeTeam <- as.character(schedule$HomeTeam)
+    schedule$AwayTeam <- as.character(schedule$AwayTeam)
     team_names = unique(c(schedule$HomeTeam, schedule$AwayTeam))
     nteams <- length(team_names)
 
-    if (!ratings_history) {
-        ratings_history = data.frame(rep(new_teams, nteams))
-        rownames(ratings_history) <- team_names
+    if (is.null(ratings_history)) {
+        ratings_history <- data.frame("Date"=as.Date(schedule[1,"Date"] -1))
     }
 
-    stopifnot(is.integer(k), k <= 0, k > 100)
-    stopifnot(is.integer(mean_value))
-    stopifnot(is.integer(new_teams))
-    stopifnot(is.logical(playoffs_boost))
+    stopifnot(is.numeric(k), k >= 0, k < 100)
+    stopifnot(is.numeric(mean_value))
+    stopifnot(is.numeric(new_teams))
 
     # Massage Data & Extract Extras
-    cnames(schedule) <- c("Date", "HomeTeam", "AwayTeam", "Result")
     game_dates <- sort(unique(schedule$Date))
     split_dates <- splitDates(game_dates)
 
     stopifnot(length(splitDates) > 0)
 
+    if(meta){
+        meta_elo <- data.frame("season.end" = as.Date(character()), "mean" = numeric(), "max.team" = character(), "max.date" = as.Date(character()), "max.val" = numeric(), "min.team" = character(), "min.date" = as.Date(character()),
+                            "min.val" = numeric(), "best.avg.team" = character(), "best.avg.team.avg" = numeric(), "worst.avg.team" = character(), "worst.avg.team.avg" = numeric())
+    }
+
     if (length(split_dates) >= 2) {
-        for (i in c(1:length(split_dates - 1))) {
-            ratings_history <- .eloSeason(schedule=schedule, dates=split_dates[i], ratings = ratings_history, new_teams = new_teams)
+        #For more than one season, use a progress bar. Can be a long calculation
+        pb<-txtProgressBar(min = 0, max = length(split_dates), initial = 0)
+
+        for (i in c(1:(length(split_dates)-1))) {
+
+
+            newseason<-.eloSeason(schedule=schedule, dates=split_dates[[i]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k)
+
+            ifelse (newseason$newteam, ratings_history <- merge(ratings_history, newseason$ratings, all=TRUE), ratings_history<-rbind(ratings_history, newseason$ratings, make.row.names=FALSE))
+
             if (meta) {
-                metaElo <- calculateEloMetas(ratings_history, split_dates[i])
+                m<-metaElo(ratings_history = ratings_history, calcDates = split_dates[[i]], teams=newseason$teams)
+                meta_elo <- rbind(meta_elo, m, make.row.names=FALSE)
             }
-            ratings_history <- .regressToMean(ratings_history, rmean = mean_value, rdate = split_dates[[i + 1]][1] - 1)
+
+            #Regress to mean. Teams not playing in a season are given NA
+            if (regress_strength != 0){
+                ratings_history[nrow(ratings_history)+1,]<-NA
+                ratings_history[nrow(ratings_history), "Date"] <- (split_dates[[i+1]][1]-1)
+                ratings_history[nrow(ratings_history), newseason$teams] <- (ratings_history[(nrow(ratings_history)-1), newseason$teams] * regress_strength + mean_value)/(regress_strength + 1)
+            }
+
+            setTxtProgressBar(pb,i)
         }
     }
-    ratings_history <- .eloSeason((schedule[schedule$Date %in% unique(split_dates[length(split_dates)]), ]))
 
-    return(ratings_history)
+    #One (last) season
+    newseason<-.eloSeason(schedule=schedule, dates=split_dates[[length(split_dates)]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k)
+    ifelse (newseason$newteam, ratings_history <- merge(ratings_history, newseason$ratings, all=TRUE), ratings_history<-rbind(ratings_history, newseason$ratings, make.row.names=FALSE))
+
+    if (meta) {
+        meta_elo <- rbind(meta_elo, metaElo(ratings_history, split_dates[[length(split_dates)]]), make.row.names=FALSE)
+    }
+
+    rlist<-list("Ratings"=ratings_history, "Meta" = meta_elo)
+    return(rlist)
 }
 
 
@@ -71,8 +101,8 @@ predictEloResult <- function(home_rank, away_rank) {
 #'
 newRankings <- function(home_rank, away_rank, result, k = 8) {
     # result is in set [0, 0.25, 0.4, 0.50, 0.6, 0.75, 1]
-    h_rank <- home_rank + k * (result - predictEloResult(home_rank, away_rank))
-    a_rank <- away_rank + k * ((1 - result) - (1 - predictEloResult(home_rank, away_rank)))
+    h_rank <- as.numeric(home_rank) + k * (as.numeric(result) - predictEloResult(as.numeric(home_rank), as.numeric(away_rank)))
+    a_rank <- as.numeric(away_rank) + k * ((1 - as.numeric(result)) - (1 - predictEloResult(as.numeric(home_rank), as.numeric(away_rank))))
     return(c(h_rank, a_rank))
 }
 
@@ -84,7 +114,7 @@ newRankings <- function(home_rank, away_rank, result, k = 8) {
 #' @return A list of vectors of dates.
 splitDates <- function(game_dates, season_split = "-08-01") {
     if (is.data.frame(game_dates)) {
-        game_dates <- sort(unique(as.Date(game_dates$Date)))
+        game_dates <- sort(unique(game_dates$Date))
     }
 
     stopifnot(class(game_dates) == "Date")
@@ -102,7 +132,7 @@ splitDates <- function(game_dates, season_split = "-08-01") {
         }
     }
 
-    # This removes null (unfilled) 'years' in the data.
+    # This removes null (unfilled) 'years' in the data. I'm looking at you, '2005'.
     split_dates <- split_dates[!sapply(split_dates, is.null)]
 
     return(split_dates)
@@ -111,57 +141,35 @@ splitDates <- function(game_dates, season_split = "-08-01") {
 #'Calculate 1 season worth of elo
 #'
 .eloSeason <- function(schedule, dates, ratings, new_teams, k) {
-    #'for date in unique dates:
-    #schedule <- schedule["Date" %in% dates, ]
+    newteam<-FALSE
+    teams<-character()
     for (i in c(1:length(unique(dates)))){
-        s<-schedule[schedule$Date == dates[i],]
-        newelos<-ratings[nrow(ratings), (names(ratings) %in% "Date")]
-        newteam<-FALSE
-        for (j in c(1:nrow(s))){
-            h<-s[j,"Home"]
-            v<-s[j,"Visitor"]
-            if (!(h %in% names(newelos))){
-                newelos[,h]<-new_teams
-                newteam<-TRUE
-            }
-            if (!(v %in% names(newelos))){
-                newelos[,v]<-new_teams
-                newteam<-TRUE
-            }
-            newrank<-newRankings(home_rank=newelos[h], away_rank = newelos[v], result = s$Result, k=k)
-            newelos[,h]<-newrank[1]
-            newelos[,v]<-newrank[2]
+        s<-schedule[(schedule$Date == as.Date(dates[i])),]
+
+        h<-make.names(s[,"HomeTeam"])
+        v<-make.names(s[,"AwayTeam"])
+        teams<-unique(c(teams,h,v))
+
+        if (length(teams[!(teams %in% names(ratings))]) > 0){
+            newteam<-TRUE
+            ratings<-cbind(ratings, as.data.frame(setNames(replicate((length(teams[!(teams %in% names(ratings))])), new_teams, simplify=FALSE), teams[!(teams %in% names(ratings))])))
         }
+
+        newelos<-ratings[nrow(ratings), (!names(ratings) %in% "Date")]
+
+        #hack to replace new (formally dropped out teams) as a new team with score new_teams
+        newelos[,c(h,v)][is.na(newelos[,c(h,v)])]<-new_teams
+        newrank<-newRankings(home_rank = newelos[1,h], away_rank=newelos[1,v], result=s[,"Result"], k=k)
+
+        ngames<-length(h)
+        newelos[1,h]<-newrank[c(1:ngames)]
+        newelos[1,v]<-newrank[c((ngames+1):(2*ngames))]
         newelos$Date<-dates[i]
-        ratings<-rbind(ratings,newelos)
-    }
-    return(ratings)
-        #'newelos<-oldest_elos
-        #'for game in date
-            #'calculate new elo & replace
-        #'write new elos to list with date
-    #'return list
-}
 
-#' Regress to mean, typically at end of season, but at any rdate.
-#'
-#'@param ratings_history The ratings to regress.
-#'@param rmean The mean to regress towards
-#'@param rstrength The amount by which to regress to the mean, in the formula rstrength/(rstrength + 1). ie. regression by 1/rstrength
-#'@param rdate A date to appy the new rating by. This is default to the day after the last rating.
-#'
-#'@return ratings_history, with one additional row with the regressed value.
-.regressToMean <- function(ratings_history, rmean = 1500, rstrength = 3, rdate = NULL) {
-    if (is.null(rdate)) {
-        rdate = as.Date(ratings_history[nrow(ratings_history), "Date"] + 1)
+        ratings<-rbind(ratings, newelos, make.row.names=FALSE)
     }
-    stopifnot(class(rdate) == "Date")
-
-    ratings <- as.numeric(ratings_history[nrow(ratings_history), c(2:ncol(ratings_history))])
-    newratings <- (ratings * rstrength + rmean)/(rstrength + 1)
-    ratings_history[nrow(ratings_history) + 1, "Date"] <- rdate
-    ratings_history[nrow(ratings_history), c(2:ncol(ratings_history))] <- newratings
-    return(ratings_history)
+    seasonreturn<-list("ratings"=ratings, "newteam"=newteam, "teams"=teams)
+    return(seasonreturn)
 }
 
 #' Prepare historical data or future data for Elo Calculations
@@ -189,34 +197,40 @@ loadEloData <- function(directory, prepare = TRUE, dropTeams = NULL, splitPastPr
 #' @param calcDates An optional list of dates through which to calculate the meta statistics. Default all
 #'
 #' @return a named list of all statistics calculated
-metaElo <- function(ratings_history, calcDates = NULL) {
+metaElo <- function(ratings_history, calcDates = NULL, teams=NULL) {
     if (!is.null(calcDates)) {
         meta_hist <- ratings_history[ratings_history$Date %in% unique(calcDates), ]
     } else {
         meta_hist <- ratings_history
+        calcDates <- meta_hist$Date
     }
 
-    meta_mean <- mean(colMeans(meta_hist[, !(names(meta_hist) %in% c("Date"))]))
+    if (is.null(teams)){
+        teams<-names(meta_hist[,!(names(meta_hist) %in% "Date")])
+    }
 
-    meta_max_row <- as.vector(which.max(apply(meta_hist[, !(names(meta_hist) %in% c("Date"))], 1, max)))
-    meta_max_col <- as.vector(which.max(apply(meta_hist[, !(names(meta_hist) %in% c("Date"))], 2, max)))
-    meta_max_val <- meta_hist[, !(names(meta_hist) %in% c("Date"))][meta_max_row, meta_max_col]
-    meta_max_team <- names(meta_hist[, !(names(meta_hist) %in% c("Date"))])[meta_max_col]
+    #each game is 0 sum, each row has same average.
+    meta_mean <- mean(rowMeans(meta_hist[nrow(meta_hist), teams], na.rm = TRUE))
+
+    meta_max_row <- as.vector(which.max(apply(meta_hist[, teams], 1, max)))[1]
+    meta_max_col <- as.vector(which.max(apply(meta_hist[, teams], 2, max)))[1]
+    meta_max_val <- meta_hist[, teams][meta_max_row, meta_max_col]
+    meta_max_team <- names(meta_hist[, teams])[meta_max_col]
     meta_max_date <- meta_hist[meta_max_row, "Date"]
 
-    meta_min_row <- as.vector(which.min(apply(meta_hist[, !(names(meta_hist) %in% c("Date"))], 1, min)))
-    meta_min_col <- as.vector(which.min(apply(meta_hist[, !(names(meta_hist) %in% c("Date"))], 2, min)))
-    meta_min_val <- meta_hist[, !(names(meta_hist) %in% c("Date"))][meta_min_row, meta_min_col]
-    meta_min_team <- names(meta_hist[, !(names(meta_hist) %in% c("Date"))])[meta_min_col]
+    meta_min_row <- as.vector(which.min(apply(meta_hist[, teams], 1, min)))[1]
+    meta_min_col <- as.vector(which.min(apply(meta_hist[,teams], 2, min)))[1]
+    meta_min_val <- meta_hist[, teams][meta_min_row, meta_min_col]
+    meta_min_team <- names(meta_hist[, teams])[meta_min_col]
     meta_min_date <- meta_hist[meta_min_row, "Date"]
 
-    meta_best_team <- names(which.max(colMeans(meta_hist[, !(names(meta_hist) %in% c("Date"))])))
-    meta_best_team_avg <- max(colMeans(meta_hist[, !(names(meta_hist) %in% c("Date"))]))
+    meta_best_team <- names(which.max(colMeans(meta_hist[, teams])))[1]
+    meta_best_team_avg <- max(colMeans(meta_hist[, teams]))[1]
 
-    meta_worst_team <- names(which.min(colMeans(meta_hist[, !(names(meta_hist) %in% c("Date"))])))
-    meta_worst_team_avg <- min(colMeans(meta_hist[, !(names(meta_hist) %in% c("Date"))]))
+    meta_worst_team <- names(which.min(colMeans(meta_hist[, teams])))[1]
+    meta_worst_team_avg <- min(colMeans(meta_hist[, teams]))[1]
 
-    metar <- list(mean = meta_mean, max_team = meta_max_team, max_date = meta_max_date, max_val = meta_max_val, min_team = meta_min_team, min_date = meta_min_date,
-        min_val = meta_min_val, best_team = meta_best_team, best_team_avg = meta_best_team_avg, worst_team = meta_worst_team, worst_team_avg = meta_worst_team_avg)
+    metar <- data.frame("season.end" = as.Date(meta_hist[nrow(meta_hist), "Date"]), "mean" = meta_mean, "max.team" = meta_max_team, "max.date" = as.Date(meta_max_date), "max.val" = meta_max_val, "min.team" = meta_min_team, "min.date" = as.Date(meta_min_date),
+        "min.val" = meta_min_val, "best.avg.team" = meta_best_team, "best.avg.team.avg" = meta_best_team_avg, "worst.avg.team" = meta_worst_team, "worst.avg.team.avg" = meta_worst_team_avg, stringsAsFactors = FALSE)
     return(metar)
 }
