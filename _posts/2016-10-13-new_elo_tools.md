@@ -16,7 +16,8 @@ Last time, we looked at Elo ratings for NHL teams. We saw that the more fancy El
  
 <!--more-->
  
-##Calculating Elo Rating
+Calculating Elo Rating
+----------------------
  
 When two teams play eachother, their Elo 'score' is both an expectation of who will win, as well as a component of how the scores move afterwards. For example, if a highly ranked team loses to a very poorly ranked team, the change in Elo for both teams will be much more than if two teams that are similarly ranked play eachother. 
 Elo is calculated first by getting an expected win chance, then comparing the expected to the actual performance of each team.
@@ -54,7 +55,9 @@ newRankings<-function(home_rank, away_rank, result, k=8){
 }
 {% endhighlight %}
  
-##Elo Over a Season
+Elo Over a Season
+-----------------
+
 Elo was designed as a ranking system for chess, and is commonly used in a context where teams may not play eachother often. By having a unified ranking system, it was possible to know who was 'the best' at any time, based on their historical performance and how they perform currently. But, in the NHL, we have a more formal round robin season and playoffs to determine the best, year after year. So the value of Elo is in its predictive power, as far as past performance is an indicator of future performance. 
  
 At the end of the season, it would make sense that teams are rated roughly along the lines of where they placed in the standings, particularly the teams that had long playoff runs. They have more wins than losses in the previous n games. But, comparing teams mid-season is more difficult, there are 'difficulty of schedule' issues, or a team may be on fire (like Montreal in the fall of 2015) and look destined to great things prior to falling off the bandwagon (like Montreal in the winter/spring of 2016). Elo allows us to watch the rise and fall of teams in much shorter timeframes. 
@@ -65,7 +68,9 @@ $R^\prime = \frac{3(R) + \overline{R}}{4}$
  
 This raises the question of what to rank new teams. While some systems rank them at the mean (1500), this implies that the new team will be better than about half of the league. Instead, it's common to bring new teams in at 1400 or 1350. However, this would bias the overall ranking of the league downward every time a new team arrived. Thus, instead of using the actual mean of 1500 to moderate towards, one can moderate slightly above, say to $\overline{R} = 1505$. This will cause slow drift upwards in league rankings, but will be counterbalanced by the arrival of new teams, such as Las Vegas for the 2017-2018 season.
  
-##Keeping Track of Elo
+Keeping Track of Elo
+--------------------
+
 There's a few ways that we could keep track of the Elo ratings of teams. The most cumbersome (in terms of storage) yet only complete way is to have a gigantic matrix, that updates after every game day, with all of the new scores, moved or not. That could look like this, or be a simple cbind in the middle of other code.
  
 
@@ -81,12 +86,16 @@ updateEloHistory<-function(new_elos, elo_history=NULL){
 }
 {% endhighlight %}
  
-##Sewing This All Together
+Sewing This All Together
+------------------------
+
 All of this code can be added together (with helper loop functions) to give us a set of functions that will rank teams using the Elo system, with the discussed extra adjustments. That code can be seen in the github for this site, available [here](http://github.com/pbulsink/pbulsink.github.io).
  
 This set of tools isn't ready yet, but I'm making progress. Keep your eyes open!
  
-##But Wait, There's More!
+But Wait, There's More!
+-----------------------
+
 Some things we haven't taken into consideration. 
  
 - Since the 1990-1991 season, the home team scores on average 0.3050 goals per game more than the away team. This turns into a home ice advantage of just over 10% (the Home team has won 55% of all games since 1990-1991, but that has varied a bit). To properly adjust for this, we should account for home ice advantage in our predictions. The rating difference that this advantage corresponds to is about 35 points.
