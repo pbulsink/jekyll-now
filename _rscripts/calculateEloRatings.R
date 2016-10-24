@@ -6,12 +6,13 @@
 #' @param mean_value optional: The mean value to regress results to at the end of the season. Default: 1500
 #' @param new_teams optional: The ranking that new teams should have. Default: 1500
 #' @param regress_strength optional: The amount by which to regress to mean. Set = 0 to turn off regression. Default: 3 (1/3 regression to mean.)
+#' @param home_adv: The home advantage, in rating points. Default: 35
 #'
-#' @return The Elo Rating for each team through time
+#' @return named list(ratings, meta) containg the Elo Rating for each team through time, and meta statistics if requested
 #' @examples
 #' calculateEloRatings(nhl20102011)
 #' calculateEloRatings(nhl20152016, ratings_history=hist_elo, k=10, mean_value=1505, new_teams=1350)
-calculateEloRatings <- function(schedule, ratings_history = NULL, k = 8, mean_value = 1500, new_teams = 1500, meta = TRUE, regress_strength=3) {
+calculateEloRatings <- function(schedule, ratings_history = NULL, k = 8, mean_value = 1500, new_teams = 1500, meta = TRUE, regress_strength=3, home_adv=35) {
     # Ensuring Opts are ok.
     stopifnot(ncol(schedule) == 4, nrow(schedule) > 0)
     names(schedule) <- c("Date", "HomeTeam", "AwayTeam", "Result")
@@ -46,7 +47,7 @@ calculateEloRatings <- function(schedule, ratings_history = NULL, k = 8, mean_va
         for (i in c(1:(length(split_dates)-1))) {
 
 
-            newseason<-.eloSeason(schedule=schedule, dates=split_dates[[i]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k)
+            newseason<-.eloSeason(schedule=schedule, dates=split_dates[[i]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k, home_adv = home_adv)
 
             ifelse (newseason$newteam, ratings_history <- merge(ratings_history, newseason$ratings, all=TRUE), ratings_history<-rbind(ratings_history, newseason$ratings, make.row.names=FALSE))
 
@@ -67,7 +68,7 @@ calculateEloRatings <- function(schedule, ratings_history = NULL, k = 8, mean_va
     }
 
     #One (last) season
-    newseason<-.eloSeason(schedule=schedule, dates=split_dates[[length(split_dates)]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k)
+    newseason<-.eloSeason(schedule=schedule, dates=split_dates[[length(split_dates)]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k, home_adv = home_adv)
     ifelse (newseason$newteam, ratings_history <- merge(ratings_history, newseason$ratings, all=TRUE), ratings_history<-rbind(ratings_history, newseason$ratings, make.row.names=FALSE))
 
     if (meta) {
@@ -83,11 +84,12 @@ calculateEloRatings <- function(schedule, ratings_history = NULL, k = 8, mean_va
 #'
 #' @param home_rank The ranking of the Home Team.
 #' @param away_rank The ranking of the Away Team.
+#' @param h_adv The home advantage (in ranking points). Default: 0
 #'
 #' @return A number between 0 and 1 corresponding to the win chances of the Home Team.
 #'
-predictEloResult <- function(home_rank, away_rank) {
-    return(1/(1 + (10^((away_rank - home_rank)/400))))
+predictEloResult <- function(home_rank, away_rank, h_adv=0) {
+    return(1/(1 + (10^((away_rank - (home_rank+h_adv))/400))))
 }
 
 #' Calculate the new ranking of both teams after an interaction
@@ -96,13 +98,15 @@ predictEloResult <- function(home_rank, away_rank) {
 #' @param away_rank The ranking of the Away Team.
 #' @param result The result of the game, either [0, 0.25, 0.4, 0.50, 0.6, 0.75, 1] corresponding to an Away win, Away Win (OT), Away Win (SO) a draw, or a Home win (same adjustors).
 #' @param k optional: The Elo K value. Default: 8
+#' @param h_adv: The home advantage (in ranking points). Default: 0
 #'
 #' @return A vector with two new ratings for Home and Away team, respectively
 #'
-newRankings <- function(home_rank, away_rank, result, k = 8) {
+newRankings <- function(home_rank, away_rank, result, k = 8, h_adv=0) {
     # result is in set [0, 0.25, 0.4, 0.50, 0.6, 0.75, 1]
-    h_rank <- as.numeric(home_rank) + k * (as.numeric(result) - predictEloResult(as.numeric(home_rank), as.numeric(away_rank)))
-    a_rank <- as.numeric(away_rank) + k * ((1 - as.numeric(result)) - (1 - predictEloResult(as.numeric(home_rank), as.numeric(away_rank))))
+    p<-predictEloResult(as.numeric(home_rank), as.numeric(away_rank), h_adv)
+    h_rank <- as.numeric(home_rank) + k * (as.numeric(result) - p)
+    a_rank <- as.numeric(away_rank) + k * ((1 - as.numeric(result)) - (1 - p))
     return(c(h_rank, a_rank))
 }
 
@@ -140,7 +144,7 @@ splitDates <- function(game_dates, season_split = "-08-01") {
 
 #'Calculate 1 season worth of elo
 #'
-.eloSeason <- function(schedule, dates, ratings, new_teams, k) {
+.eloSeason <- function(schedule, dates, ratings, new_teams, k, home_adv) {
     newteam<-FALSE
     teams<-character()
     for (i in c(1:length(unique(dates)))){
@@ -159,7 +163,7 @@ splitDates <- function(game_dates, season_split = "-08-01") {
 
         #hack to replace new (formally dropped out teams) as a new team with score new_teams
         newelos[,c(h,v)][is.na(newelos[,c(h,v)])]<-new_teams
-        newrank<-newRankings(home_rank = newelos[1,h], away_rank=newelos[1,v], result=s[,"Result"], k=k)
+        newrank<-newRankings(home_rank = newelos[1,h], away_rank=newelos[1,v], result=s[,"Result"], k=k, h_adv = home_adv)
 
         ngames<-length(h)
         newelos[1,h]<-newrank[c(1:ngames)]

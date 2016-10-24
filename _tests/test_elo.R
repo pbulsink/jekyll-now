@@ -43,10 +43,10 @@ test_that("Test meta Statistics", {
     answer <- data.frame("season.end" = as.Date("2012-01-15"), "mean" = 8.33333333, "max.team" = "TeamC", "max.date" = as.Date("2012-01-07"), "max.val" = 12, "min.team" = "TeamB", "min.date" = as.Date("2012-01-08"),
         "min.val" = 5, "best.avg.team" = "TeamA", "best.avg.team.avg" = 10, "worst.avg.team" = "TeamB", "worst.avg.team.avg" = 7, stringsAsFactors = FALSE)
 
-    answer2 <- data.frame("season.end" = as.Date("2012-01-15"), "mean" = 8.4, "max.team" = "TeamC", "max.date" = as.Date("2012-01-07"), "max.val" = 12, "min.team" = "TeamB", "min.date" = as.Date("2012-01-08"),
+    answer2 <- data.frame("season.end" = as.Date("2012-01-15"), "mean" = 8.33333333, "max.team" = "TeamC", "max.date" = as.Date("2012-01-07"), "max.val" = 12, "min.team" = "TeamB", "min.date" = as.Date("2012-01-08"),
         "min.val" = 5, "best.avg.team" = "TeamA", "best.avg.team.avg" = 10, "worst.avg.team" = "TeamB", "worst.avg.team.avg" = 7.2, stringsAsFactors = FALSE)
 
-    answer3 <- data.frame("season.end" = as.Date("2012-01-15"), "mean" = 9, "max.team" = "TeamC", "max.date" = as.Date("2012-01-07"), "max.val" = 12, "min.team" = "TeamC", "min.date" = as.Date("2012-01-15"),
+    answer3 <- data.frame("season.end" = as.Date("2012-01-15"), "mean" = 8, "max.team" = "TeamC", "max.date" = as.Date("2012-01-07"), "max.val" = 12, "min.team" = "TeamC", "min.date" = as.Date("2012-01-15"),
                           "min.val" = 6, "best.avg.team" = "TeamA", "best.avg.team.avg" = 10, "worst.avg.team" = "TeamC", "worst.avg.team.avg" = 8, stringsAsFactors = FALSE)
 
     expect_equal(metaElo(testdf), answer)
