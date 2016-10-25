@@ -11,6 +11,7 @@ tags: R hockey Rating Elo plots
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 1, digits = 2)
 ```
 
 I've developed my own Elo toolset, with options available that I discussed in [this earlier post](https://pbulsink.github.io/blog/2016-10-12/new_elo_tools.html). This includes an adjustment option for home ice advantage, and isn't pinned down to any specific set of possible results (e.g. able to give overtime wins less of a boost than reguar time wins). Lets take a look at the Elo ratings over all time in the NHL.
@@ -19,9 +20,9 @@ I've developed my own Elo toolset, with options available that I discussed in [t
 
 After data is imported (to be covered later), we can run Elo ratings very simply.
 
-```{r rank_history}
-source("../_rscripts/calculateEloRatings.R")
-nhl_all<-readRDS("../_data/nhl_elo_prepared_data.RDS")
+```{r rank_history, warning=FALSE, error=FALSE, message=FALSE}
+source("./_rscripts/calculateEloRatings.R")
+nhl_all<-readRDS("./_data/nhl_elo_prepared_data.RDS")
 elo_all<-calculateEloRatings(schedule = nhl_all, mean_value = 1500, new_teams = 1300, k = 20, home_adv = 35)
 ```
 
@@ -54,7 +55,8 @@ ggplot(data=elo_all_long,
   theme(legend.position="none")
   
 ```
-Here's every team that has played in the league's ratings over all time. I've dropped the legend because it takes up almost the entire plot canvas, as there are `r unique(elo_all_long$Team)` teams in total. See [this earlier post](https://pbulsink.github.io/blog/2016-07-28/Cleaning-Hockey-Reference-Data.html) about handling teams that have moved or changed names in the past.
+
+Here's every team that has played in the league's ratings over all time. I've dropped the legend because it takes up almost the entire plot canvas, as there are `r length(unique(elo_all_long$Team))` teams in total. See [this earlier post](https://pbulsink.github.io/blog/2016-07-28/Cleaning-Hockey-Reference-Data.html) about handling teams that have moved or changed names in the past.
 
 I plan to make a shiny app that I'll link to, where you can investigate each team's Elo history in a cleaner format. For the time being, here's what one team looks like:
 ```{r ggplot_one_team_elo}
