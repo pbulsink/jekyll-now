@@ -1,0 +1,10 @@
+name: NHL_Elo_Ratings
+title:
+account: pbulsink
+server: shinyapps.io
+appId: 133642
+bundleId: 595712
+url: https://pbulsink.shinyapps.io/NHL_Elo_Ratings/
+when: 1477367050.32246
+asMultiple: FALSE
+asStatic: FALSE
