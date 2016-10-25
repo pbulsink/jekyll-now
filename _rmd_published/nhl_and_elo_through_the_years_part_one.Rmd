@@ -6,7 +6,7 @@ status: process
 published: true
 layout: post
 excerpt_separator: <!--more-->
-tags: R hockey ranking Elo plots
+tags: R hockey Rating Elo plots
 ---
 
 ```{r setup, include=FALSE}
@@ -17,7 +17,7 @@ I've developed my own Elo toolset, with options available that I discussed in [t
 
 <!--more-->
 
-After data is imported (to be covered later), we can run Elo rankings very simply.
+After data is imported (to be covered later), we can run Elo ratings very simply.
 
 ```{r rank_history}
 source("../_rscripts/calculateEloRatings.R")
@@ -25,20 +25,21 @@ nhl_all<-readRDS("../_data/nhl_elo_prepared_data.RDS")
 elo_all<-calculateEloRatings(schedule = nhl_all, mean_value = 1500, new_teams = 1300, k = 20, home_adv = 35)
 ```
 
-First, a discussion on the variables passed in to the function. I've set `k=20`, that's what Fivethirtyeight found best reflected movement in NBA rankings. Similarly, I've set new teams to a value of 1300, and regressed by 1/3 to a mean of 1500. I've set a home-ice advantage of 35 points, that corresponds to the average of 55% home-team wins over the past few years, and 35 points corresponds to that advantage (see previous post).
+First, a discussion on the variables passed in to the function. I've set `k=20`, that's what Fivethirtyeight found best reflected movement in NBA Ratings. Similarly, I've set new teams to a value of 1300, and regressed by 1/3 to a mean of 1500. I've set a home-ice advantage of 35 points, that corresponds to the average of 55% home-team wins over the past few years, and 35 points corresponds to that advantage (see previous post).
 
 Having performed the elo calculations, lets look at some stats:
 ```{r ggplot_means, echo=FALSE}
 ggplot(elo_all$Meta, 
        aes(x=season.end, y=mean)) + 
   geom_point() +
-  ggtitle("Average Elo Ranking by Season") +
+  ggtitle("Average Elo Rating by Season") +
   xlab("Season") +
-  ylab("Average Elo Ranking")
+  ylab("Average Elo Rating") +
+  theme_bw()
 
 ```
 
-You'll see that every time teams are added, the average ranking goes down, and slowly recovers to 1500 A few times the average goes above the target, this happens when low-ranked teams drop out of the league. By this method, we're currently at `r elo_all$Meta$mean[length(elo_all$Meta$mean)]`, but this will decrease next year as Las Vegas steps into the league.
+You'll see that every time teams are added, the average Rating goes down, and slowly recovers to 1500 A few times the average goes above the target, this happens when low-ranked teams drop out of the league. By this method, we're currently at `r elo_all$Meta$mean[length(elo_all$Meta$mean)]`, but this will decrease next year as Las Vegas steps into the league.
 
 ```{r ggplot_all_ratings, echo=FALSE}
 library(reshape2)
@@ -46,9 +47,10 @@ elo_all_long<-melt(elo_all$Ratings, id="Date", value.name="Rating", variable.nam
 ggplot(data=elo_all_long, 
        aes(x=Date, y=Rating, colour=Team)) +
   geom_line() +
-  ggtitle("ELO Ratings for each NHL Team Through Time") +
+  ggtitle("Elo Ratings for each NHL Team Through Time") +
   xlab("Date") +
-  ylab("Elo Ranking") +
+  ylab("Elo Rating") +
+  theme_bw() +
   theme(legend.position="none")
   
 ```
@@ -59,9 +61,10 @@ I plan to make a shiny app that I'll link to, where you can investigate each tea
 ggplot(data=elo_all_long[elo_all_long$Team == "Nashville.Predators",], 
         aes(x=Date, y=Rating)) +
      geom_line(colour='darkblue') +
-     ggtitle("ELO Ratings for the Nashville Predators Through Time") +
+     ggtitle("Elo Ratings for the Nashville Predators Through Time") +
      xlab("Date") +
-     ylab("Elo Ranking") +
+     ylab("Elo Rating") +
+     theme_bw() +
      theme(legend.position="none")
 ```
 
