@@ -12,7 +12,7 @@
 #' @examples
 #' calculateEloRatings(nhl20102011)
 #' calculateEloRatings(nhl20152016, ratings_history=hist_elo, k=10, mean_value=1505, new_teams=1350)
-calculateEloRatings <- function(schedule, ratings_history = NULL, k = 8, mean_value = 1500, new_teams = 1500, meta = TRUE, regress_strength=3, home_adv=35) {
+calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_value = 1500, new_teams = 1300, meta = TRUE, regress_strength=3, home_adv=35) {
     # Ensuring Opts are ok.
     stopifnot(ncol(schedule) == 4, nrow(schedule) > 0)
     names(schedule) <- c("Date", "HomeTeam", "AwayTeam", "Result")
