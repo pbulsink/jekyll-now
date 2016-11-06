@@ -17,17 +17,19 @@ cleanHockeyData <- function(hockeyData, cleanTeams = TRUE, identifyTies = TRUE, 
     try(hockeyData <- subset(hockeyData, select = -LOG), silent=TRUE)
     try(hockeyData <- subset(hockeyData, select = -X), silent=TRUE)
     hockeyData$Date <- as.Date(hockeyData$Date)
+    hockeyData <- hockeyData[order(hockeyData$Date, hockeyData$League),]
     if ('Att.' %in% names(hockeyData)){
         hockeyData$Att. <- as.integer(hockeyData$Att.)
     }
     names(hockeyData)[names(hockeyData) == "G"] <- "VisitorGoals"
     names(hockeyData)[names(hockeyData) == "G.1"] <- "HomeGoals"
     names(hockeyData)[names(hockeyData) == "X.1"] <- "OTStatus"
-    hockeyData$OTStatus <- as.character(hockeyData$OTStatus)
+    hockeyData$OTStatus <- as.factor(hockeyData$OTStatus)
+    hockeyData$League <- as.factor(hockeyData$League)
 
     if (identifyTies) {
         hockeyData$Tie <- FALSE
-        hockeyData[allHockeyData$OTStatus %in% c("2OT", "3OT", "4OT", "5OT", "6OT", "OT", "SO"), ]$Tie <- TRUE
+        hockeyData[hockeyData$OTStatus %in% c("2OT", "3OT", "4OT", "5OT", "6OT", "OT", "SO"), ]$Tie <- TRUE
     }
 
     # Remove games against international teams
@@ -72,6 +74,7 @@ cleanHockeyData <- function(hockeyData, cleanTeams = TRUE, identifyTies = TRUE, 
     }
 
     if (eloResults) {
+        message('calculating Elo results')
         hockeyData$Result <- apply(hockeyData, 1, function(x) tieSort(x))
     }
 
@@ -104,4 +107,41 @@ tieSort<-function(x) {
     else if (x[3] == x[5]){
         return(0.5)
     }
+}
+
+readHockeyData<-function(data_dir="./_data", nhl_year_list = c(1918:2017), wha_year_list = c(1973:1979), playoffs = TRUE, lastPlayoffs = FALSE, ...){
+    df_nhl <- data.frame(Date = NULL, Visitor = NULL, G = NULL, Home = NULL, G.1 = NULL, X.1 = NULL)
+    df_wha <- df_nhl
+    nhl_year_list<-nhl_year_list[nhl_year_list != 2005]
+    message('reading NHL data')
+    for (year in 1:length(nhl_year_list)) {
+        df_nhl <- rbind(df_nhl, read.csv(paste("./_data/", nhl_year_list[year] - 1, nhl_year_list[year], ".csv", sep = ""))[2:7])
+    }
+    if (playoffs) {
+        for (year in 1:(length(nhl_year_list) - 1)) {
+            if (nhl_year_list[year] != 1920){df_nhl <- rbind(df_nhl, read.csv(paste("./_data/", nhl_year_list[year] - 1, nhl_year_list[year], "Playoffs.csv", sep = ""))[2:7])}
+        }
+        if (lastPlayoffs) {
+            df_nhl <- rbind(df_nhl, read.csv(paste("./_data/", nhl_year_list[length(nhl_year_list)] - 1, nhl_year_list[length(nhl_year_list)], "Playoffs.csv", sep = ""))[2:7])
+        }
+    }
+
+    df_nhl$League<-"NHL"
+
+    message('reading WHA data')
+    for (year in 1:length(wha_year_list)) {
+        df_wha <- rbind(df_wha, read.csv(paste("./_data/wha", wha_year_list[year] - 1, wha_year_list[year], ".csv", sep = ""))[2:7])
+    }
+    if (playoffs) {
+        for (year in 1:(length(wha_year_list))) {
+            df_wha <- rbind(df_wha, read.csv(paste("./_data/wha", wha_year_list[year] - 1, wha_year_list[year], "Playoffs.csv", sep = ""))[2:7])
+        }
+    }
+
+    df_wha$League<-"WHA"
+
+    df<-rbind(df_nhl, df_wha)
+
+    df <- cleanHockeyData(hockeyData = df, ...)
+    return(df)
 }
