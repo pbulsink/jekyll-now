@@ -3,8 +3,9 @@ title:
 account: pbulsink
 server: shinyapps.io
 appId: 133642
-bundleId: 595712
+bundleId: 607122
 url: https://pbulsink.shinyapps.io/NHL_Elo_Ratings/
-when: 1477367050.32246
+when: 1478461525.68416
 asMultiple: FALSE
 asStatic: FALSE
+ignoredFiles: app2.R|server2.R|ui2.R

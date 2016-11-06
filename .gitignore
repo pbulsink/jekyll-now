@@ -12,3 +12,9 @@ package.json
 .Rhistory
 nhlr-data
 
+
+*.dcf
+
+*.dcf
+
+_shiny_apps/EloRating/rsconnect/shinyapps.io/pbulsink/NHL_Elo_Ratings.dcf
