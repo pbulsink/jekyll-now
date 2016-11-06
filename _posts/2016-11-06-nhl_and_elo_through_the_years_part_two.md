@@ -15,9 +15,9 @@ As promised, I've created a shiny app containing all of the Elo Rankings through
  
 <!--more-->
  
-The data was prepared using my custom Elo ranking scripts. Teams are named, for the most part, by their current (or last existing) name, except for when this causes problems. 
+The data was prepared using my custom Elo ranking scripts. Teams are named, for the most part, by their current (or last existing) name, except for when this causes problems. See more information in [the last post](https://pbulsink.github.io/blog/2016-10-24/nhl_and_elo_through_the_years_part_one.html). I know it renders a bit slowly, I've thinned the data to get the performance out of it that I can. 
  
-<iframe src="https://pbulsink.shinyapps.io/NHL_Elo_Ratings/" style="border:none;width:1000px;height:500px;"></iframe>
+<iframe src="https://pbulsink.shinyapps.io/NHL_Elo_Ratings/" style="border:none;width:1000px;height:1500px;"></iframe>
  
 I hope to start making predictions about season performance with this data soon.
  

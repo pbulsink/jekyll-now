@@ -11,6 +11,7 @@ tags: R hockey Rating Elo plots
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
 ```
 
 I've developed my own Elo toolset, with options available that I discussed in [this earlier post](https://pbulsink.github.io/blog/2016-10-12/new_elo_tools.html). This includes an adjustment option for home ice advantage, and isn't pinned down to any specific set of possible results (e.g. able to give overtime wins less of a boost than reguar time wins). Lets take a look at the Elo ratings over all time in the NHL.
@@ -19,7 +20,7 @@ I've developed my own Elo toolset, with options available that I discussed in [t
 
 After data is imported (to be covered later), we can run Elo ratings very simply.
 
-```{r rank_history}
+```{r rank_history, message=FALSE}
 source("./_rscripts/calculateEloRatings.R")
 nhl_all<-readRDS("./_data/nhl_elo_prepared_data.RDS")
 elo_all<-calculateEloRatings(schedule = nhl_all, mean_value = 1500, new_teams = 1300, k = 20, home_adv = 35)
