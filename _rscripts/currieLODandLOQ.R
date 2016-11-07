@@ -5,7 +5,7 @@
 
 variance <- function(x) {
     # Sum (i=1..n) (xi-xbar)^2
-    return((x - mean(x))^2)
+    return(sum((x - mean(x))^2))
 }
 
 intercept.sd <- function(x, y) {
@@ -18,11 +18,11 @@ regression.sd <- function(x, y) {
     fit <- lm(y ~ x)
     a <- fit$coefficients[[1]]
     b <- fit$coefficients[[2]]
-    return(sqrt(((y - a - b * x)^2)/(length(x) - 2)))
+    return(sqrt((sum(y - a - b * x)^2)/(length(x) - 2)))
 }
 
 eta <- function(M, x) {
-    return((1/M) + (1/length(x)) + ((mean(x)^2)/(variance(x))))
+    return((1/M) + (1/length(x)) + (sum(mean(x)^2)/(variance(x))))
 }
 
 eta.root <- function(M, x) {
@@ -54,8 +54,15 @@ response.loq <- function(x, y, M = 1, falsePositive = 0.95, falseNegative = 0.99
 calculateCurrieLimits <- function(cal, replicate_cals = 1, falsePositive = 0.95, 
     falseNegative = 0.99) {
     # input: list(x=..., y-...) with x, y values of calibration.
-    # compoundname, stock calibration, dilutionfactor, response,
-    # dilutionfactor,response...
+    stopifnot(is.list(cal))
+    
+    lod_loq<-list(
+        lod_x = concentration.lod(cal$x, cal$y, replicate_cals, falsePositive),
+        lod_y = response.lod(cal$x, cal$y, replicate_cals, falsePositive),
+        loq_x = concentration.loq(cal$x, cal$y, replicate_cals, falsePositive, falseNegative),
+        loq_y = response.loq(cal$x, cal$y, replicate_cals, falsePositive, falseNegative)
+        )
+    return(lod_loq)
 }
 
 inputCurrieData <- function(dataplace) {

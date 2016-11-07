@@ -17,6 +17,7 @@ I've developed my own Elo toolset, with options available that I discussed in [t
  
 After data is imported (to be covered later), we can run Elo ratings very simply.
  
+ 
 
 {% highlight r %}
 source("./_rscripts/calculateEloRatings.R")
@@ -30,7 +31,7 @@ elo_all<-calculateEloRatings(schedule = nhl_all, mean_value = 1500, new_teams = 
 ## ==========================================================================
 {% endhighlight %}
  
-First, a discussion on the variables passed in to the function. I've set `k=20`, that's what Fivethirtyeight found best reflected movement in NBA Ratings. Similarly, I've set new teams to a value of 1300, and regressed by 1/3 to a mean of 1500. I've set a home-ice advantage of 35 points, that corresponds to the average of 55% home-team wins over the past few years, and 35 points corresponds to that advantage (see previous post).
+First, a discussion on the variables passed in to the function. I've set `k=20`, that's what Fivethirtyeight found best reflected movement in NBA Ratings, which is a similar number of games per season. Similarly, I've set new teams to a value of 1300, and regressed by 1/3 to a mean of 1500. I've set a home-ice advantage of 35 points, that corresponds to the average of 55% home-team wins over the past few years, and 35 points corresponds to that advantage (see previous post). These are all now the defaults of the elo calculating code.
  
 Having performed the elo calculations, lets look at some stats:
 ![plot of chunk ggplot_means](/images/ggplot_means-1.png)
