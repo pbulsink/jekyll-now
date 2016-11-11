@@ -177,23 +177,142 @@ splitDates <- function(game_dates, season_split = "-08-01") {
 }
 
 #' Prepare historical data or future data for Elo Calculations
+#' @param hockeyData Raw data read from hockey-reference cache
+#' @param cleanTeams Whether or not to remove conflicting & historical team names
+#' @param identifyTies Whether or not to add a boolean df column for tie games
+#' @param listWinnersLosers Whether or not to add df columns containing winning and losing team name
+#' @param removeInternational Whether or not to remove international teams from game info
+#' @param eloResults Whether to calculate Elo results [0, 0.25, 0.4, 0.5, 0.6, 0.75, 1]
 #'
-#' @param schedule
-#' @param splitPastPresent
-#'
-#' @return a named list with 'pastGames' and 'futureGames' as [Date, HomeTeam, AwayTeam, Result [0, 0.25, 0.4, 0.50, 0.6, 0.75, 1]]
-prepareEloData <- function(schedule, splitPastPresent = TRUE) {
+#' @return a cleaned data frame
+prepareEloData <- function(hockeyData, cleanTeams = TRUE, identifyTies = TRUE, listWinnersLosers = TRUE, removeInternational = TRUE, eloResults=TRUE) {
+    teamReplace <- list(list("Alberta Oilers", "Edmonton Oilers"), list("Mighty Ducks of Anaheim", "Anaheim Ducks"), list("Winnipeg Jets (historical)","Arizona Coyotes"), list("Phoenix Coyotes", "Arizona Coyotes"), list("Atlanta Flames", "Calgary Flames"), list("Atlanta Thrashers", "Winnipeg Jets"),
+                        list("Toronto Toros", "Birmingham Bulls"), list("Ottawa Nationals", "Birmingham Bulls"), list("Quebec Athletic Club/Bulldogs", "Brooklyn Americans"),
+                        list("Hamilton Tigers", "Brooklyn Americans"), list("New York Americans", "Brooklyn Americans"), list("Philadelphia Blazers", "Calgary Cowboys"),
+                        list("Vancouver Blazers", "Calgary Cowboys"), list("Oakland Seals", "Cleveland Barons"), list("California Golden Seals", "Cleveland Barons"),
+                        list("New England Whalers", "Carolina Hurricanes"), list("Hartford Whalers", "Carolina Hurricanes"), list("Chicago Black Hawks", "Chicago Blackhawks"),
+                        list("Quebec Nordiques", "Colorado Avalanche"), list("Kansas City Scouts", "New Jersey Devils"), list("Colorado Rockies", "New Jersey Devils"),
+                        list("Minnesota North Stars", "Dallas Stars"), list("Detroit Cougars", "Detroit Red Wings"), list("Detroit Falcons", "Detroit Red Wings"),
+                        list("Los Angeles Sharks", "Michigan Stags/Baltimore Blades"), list("New York Raiders", "San Diego Mariners"), list("New York Golden Blades/New Jersey Knights",
+                                                                                                                                            "San Diego Mariners"), list("Pittsburgh Pirates", "Philadelphia Quakers"), list("Toronto Arenas", "Toronto Maple Leafs"), list("Toronto St. Patricks",
+                                                                                                                                                                                                                                                                           "Toronto Maple Leafs"), list("Ottawa Senators (historical)", "St. Louis Eagles"))
 
+    # ReType frame
+    message("retype frame")
+    hockeyData <- unique(hockeyData)
+    try(hockeyData <- subset(hockeyData, select = -LOG), silent=TRUE)
+    try(hockeyData <- subset(hockeyData, select = -X), silent=TRUE)
+    hockeyData$Date <- as.Date(hockeyData$Date)
+    hockeyData <- hockeyData[order(hockeyData$Date, hockeyData$League),]
+    if ('Att.' %in% names(hockeyData)){
+        hockeyData$Att. <- as.integer(hockeyData$Att.)
+    }
+    names(hockeyData)[names(hockeyData) == "G"] <- "VisitorGoals"
+    names(hockeyData)[names(hockeyData) == "G.1"] <- "HomeGoals"
+    names(hockeyData)[names(hockeyData) == "X.1"] <- "OTStatus"
+    hockeyData$OTStatus <- as.factor(hockeyData$OTStatus)
+    hockeyData$League <- as.factor(hockeyData$League)
+
+    if (identifyTies) {
+        hockeyData$Tie <- FALSE
+        hockeyData[hockeyData$OTStatus %in% c("2OT", "3OT", "4OT", "5OT", "6OT", "OT", "SO"), ]$Tie <- TRUE
+    }
+
+    # Remove games against international teams
+    if (removeInternational) {
+        message("dropping international games")
+        hockeyData <- hockeyData[!(hockeyData$Visitor %in% c("Soviet All-Stars", "Czechoslovakia","Finland")), ]
+    }
+
+    message("dropping unplayed games - future or past cancelled")
+    hockeyData <- hockeyData[!is.na(hockeyData$VisitorGoals), ]
+
+    if (cleanTeams) {
+        # Special Casing out the various teams with repeat existances
+        message("special cases")
+        levels(hockeyData$Home) <- c(levels(hockeyData$Home), "Winnipeg Jets (historical)")
+        levels(hockeyData$Visitor) <- c(levels(hockeyData$Visitor), "Winnipeg Jets (historical)")
+        levels(hockeyData$Home) <- c(levels(hockeyData$Home), "Ottawa Senators (historical)")
+        levels(hockeyData$Visitor) <- c(levels(hockeyData$Visitor), "Ottawa Senators (historical)")
+
+        try(hockeyData[hockeyData$Visitor == "Winnipeg Jets" & hockeyData$Date < as.Date("1997-01-01", format = "%Y-%m-%d"), ]$Visitor <- "Winnipeg Jets (historical)", silent=TRUE)
+        try(hockeyData[hockeyData$Home == "Winnipeg Jets" & hockeyData$Date < as.Date("1997-01-01", format = "%Y-%m-%d"), ]$Home <- "Winnipeg Jets (historical)", silent=TRUE)
+        try(hockeyData[hockeyData$Visitor == "Ottawa Senators" & hockeyData$Date < as.Date("1935-01-01", format = "%Y-%m-%d"), ]$Visitor <- "Ottawa Senators (historical)", silent=TRUE)
+        try(hockeyData[hockeyData$Home == "Ottawa Senators" & hockeyData$Date < as.Date("1935-01-01", format = "%Y-%m-%d"), ]$Home <- "Ottawa Senators (historical)", silent=TRUE)
+
+        message("reguar replacements")
+        for (t in teamReplace) {
+            try(hockeyData[hockeyData$Visitor == t[1], ]$Visitor <- t[2], silent=TRUE)
+            try(hockeyData[hockeyData$Home == t[1], ]$Home <- t[2], silent=TRUE)
+        }
+
+        try(hockeyData[hockeyData$Date > as.Date("1976-09-01", format = "%Y-%m-%d") & hockeyData$Visitor == "Minnesota Fighting Saints", ]$Visitor <- "Cleveland Crusaders", silent=TRUE)
+        try(hockeyData[hockeyData$Date > as.Date("1976-09-01", format = "%Y-%m-%d") & hockeyData$Home == "Minnesota Fighting Saints", ]$Home <- "Cleveland Crusaders", silent=TRUE)
+
+        hockeyData$Visitor <- droplevels(hockeyData$Visitor)
+        hockeyData$Home <- droplevels(hockeyData$Home)
+    }
+
+    if (listWinnersLosers) {
+        message("find winners and losers")
+        hockeyData$Winner <- as.factor(apply(hockeyData, 1, function(x) ifelse(x[3] > x[5], x[2], x[4])))
+        hockeyData$Loser <- as.factor(apply(hockeyData, 1, function(x) ifelse(x[3] <= x[5], x[2], x[4])))
+    }
+
+    if (eloResults) {
+        message('calculating Elo results')
+        hockeyData$Result <- apply(hockeyData, 1, function(x) tieSort(x))
+    }
+
+    return(hockeyData)
 }
 
-#' Load data from directory, and pass to prepareEloData if requested
+#' Load data from directory, and pass to prepareEloData if requested. Returns a fully processed
+#' data set ready for elo analysis
 #'
-#' @param directory Directory where data is stored
-#' @param prepare Whether to pass to prepareEloData automatically. Default True.
-#' @param dropTeams Drop teams of given names
-#' @param splitPastPresent Whether to split past and present teams in prepareEloData.
-loadEloData <- function(directory, prepare = TRUE, dropTeams = NULL, splitPastPresent = TRUE) {
+#' @param data_dir Directory where data is stored
+#' @param nhl_year_list NHL Years to import data. Will automatically skip missing seasons
+#' @param wha_year_list WHA Years to import data.
+#' @param playoffs Whether or not to import playoff games
+#' @param last_playoffs Whether or not to import the playoffs for the latest (current?) season
+#' @param ... Parameters for prepareEloData()
+#'
+#' @return a data frame containing processed NHL data for the selected parameters
+loadEloData <- function(data_dir="./_data", nhl_year_list = c(1918:2017), wha_year_list = c(1973:1979), playoffs = TRUE, lastPlayoffs = FALSE, ...) {
+    df_nhl <- data.frame(Date = NULL, Visitor = NULL, G = NULL, Home = NULL, G.1 = NULL, X.1 = NULL)
+    df_wha <- df_nhl
+    nhl_year_list<-nhl_year_list[nhl_year_list != 2005]
+    message('reading NHL data')
+    for (year in 1:length(nhl_year_list)) {
+        df_nhl <- rbind(df_nhl, read.csv(paste("./_data/", nhl_year_list[year] - 1, nhl_year_list[year], ".csv", sep = ""))[2:7])
+    }
+    if (playoffs) {
+        for (year in 1:(length(nhl_year_list) - 1)) {
+            if (nhl_year_list[year] != 1920){df_nhl <- rbind(df_nhl, read.csv(paste("./_data/", nhl_year_list[year] - 1, nhl_year_list[year], "Playoffs.csv", sep = ""))[2:7])}
+        }
+        if (lastPlayoffs) {
+            df_nhl <- rbind(df_nhl, read.csv(paste("./_data/", nhl_year_list[length(nhl_year_list)] - 1, nhl_year_list[length(nhl_year_list)], "Playoffs.csv", sep = ""))[2:7])
+        }
+    }
 
+    df_nhl$League<-"NHL"
+
+    message('reading WHA data')
+    for (year in 1:length(wha_year_list)) {
+        df_wha <- rbind(df_wha, read.csv(paste("./_data/wha", wha_year_list[year] - 1, wha_year_list[year], ".csv", sep = ""))[2:7])
+    }
+    if (playoffs) {
+        for (year in 1:(length(wha_year_list))) {
+            df_wha <- rbind(df_wha, read.csv(paste("./_data/wha", wha_year_list[year] - 1, wha_year_list[year], "Playoffs.csv", sep = ""))[2:7])
+        }
+    }
+
+    df_wha$League<-"WHA"
+
+    df<-rbind(df_nhl, df_wha)
+
+    df <- prepareEloData(hockeyData = df, ...)
+    return(df)
 }
 
 #' Calculate and return meta statistics
@@ -237,4 +356,33 @@ metaElo <- function(ratings_history, calcDates = NULL, teams=NULL) {
     metar <- data.frame("season.end" = as.Date(meta_hist[nrow(meta_hist), "Date"]), "mean" = meta_mean, "max.team" = meta_max_team, "max.date" = as.Date(meta_max_date), "max.val" = meta_max_val, "min.team" = meta_min_team, "min.date" = as.Date(meta_min_date),
         "min.val" = meta_min_val, "best.avg.team" = meta_best_team, "best.avg.team.avg" = meta_best_team_avg, "worst.avg.team" = meta_worst_team, "worst.avg.team.avg" = meta_worst_team_avg, stringsAsFactors = FALSE)
     return(metar)
+}
+
+#' Helper function for incoming data
+tieSort<-function(x) {
+    if (x[3] > x[5]){
+        if (x[6] %in% c("SO")){
+            return(0.4)
+        }
+        else if (x[6] %in% c("2OT", "3OT", "4OT", "5OT", "6OT", "OT")){
+            return(0.25)
+        }
+        else{
+            return(0.0)
+        }
+    }
+    else if (x[3] < x[5]){
+        if (x[6] %in% c("SO")){
+            return(0.6)
+        }
+        else if (x[6] %in% c("2OT", "3OT", "4OT", "5OT", "6OT", "OT")){
+            return(0.75)
+        }
+        else{
+            return(1.0)
+        }
+    }
+    else if (x[3] == x[5]){
+        return(0.5)
+    }
 }
