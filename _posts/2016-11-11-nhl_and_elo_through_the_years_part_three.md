@@ -103,3 +103,43 @@ We can look at the data and say, with more confidence, that there is a loose rel
 
  
 For those who are curious, the equation of that line of best fit is y=10.420061162924x-5.47926227051295. 
+ 
+One other thing we can do is plot proportion of wins, losses and ties by Elo Difference:
+ 
+
+{% highlight r %}
+propresults<-list(EloDiff=numeric(), Win=numeric(), Draw=numeric(), Loss=numeric())
+ 
+for (i in unique(round(nhl_data$EloDiff))){
+    propresults$EloDiff<-c(propresults$EloDiff, i)
+    x<-nhl_data[round(nhl_data$EloDiff) == i,]
+    propresults$Win<-c(propresults$Win, length(x[x$Result == 1,'Result'])/nrow(x))
+    propresults$Draw<-c(propresults$Draw, length(x[(x$Result < 0.61 & x$Result > 0.39),'Result'])/nrow(x))
+    propresults$Loss<-c(propresults$Loss, length(x[x$Result == 0,'Result'])/nrow(x))
+}
+propresults<-as.data.frame(propresults)
+ 
+proplong<-melt(propresults, id.vars = 'EloDiff', value.name = "Proportion", variable.name = "Result")
+proplong<-proplong[order(proplong$EloDiff), ]
+ 
+fitwin<-glm(propresults$Win ~ propresults$EloDiff)
+fitdraw<-glm(propresults$Draw ~ propresults$EloDiff)
+fitloss<-glm(propresults$Loss ~ propresults$EloDiff)
+sumintercept<-fitwin$coefficients[1]+fitdraw$coefficients[1]+fitloss$coefficients[1]
+sumslope<-fitwin$coefficients[2]+fitdraw$coefficients[2]+fitloss$coefficients[2]
+ 
+ggplot(proplong, aes(x=EloDiff, y=Proportion, colour=Result)) + 
+    geom_point(alpha=0.2) + 
+    geom_smooth(method='glm', formula=y~x) +
+    geom_segment(aes(x = -460, y = (sumintercept+(sumslope*-460)), xend = 458, yend = (sumintercept+(sumslope*458)), colour = 'Sum of Fits', show.legend=TRUE)) +
+    theme_bw() +
+    ggtitle("Elo Difference vs. Proportion of Results") +
+    xlab("Elo Difference (Home-Away)") +
+    ylab("Proportion of Each Result") +
+    scale_colour_brewer(palette = "Dark2")
+{% endhighlight %}
+
+![plot of chunk proportion_results](/images/proportion_results-1.png)
+ 
+Wow! Serious correllation here. It's important to note that Wins include overtime, but not shootout wins, similarly with losses. Shootouts and proper ties are handled as draws. We can see as well that the sum of the linear best fits is quite close to one (about 0.95) and has only a very slight slope (approximately 10e-5), as we would expect for corellations of all data. 
+ 
