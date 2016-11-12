@@ -1,4 +1,4 @@
-getAndSaveWHAGames <- function(start = 1973, end = 1979, wait = 30) {
+getAndSaveWHAGames <- function(start = 1973, end = 1979, wait = 30, data_dir=".") {
     if (!require(XML)) {
         return(FALSE)
     }
@@ -40,15 +40,15 @@ getAndSaveWHAGames <- function(start = 1973, end = 1979, wait = 30) {
             regular <- tables[["games"]]
             playoff <- tables[["games_playoffs"]]
             message(" Saving...", "\r", appendLF = FALSE)
-            write.csv(regular, file = paste0("./wha", i - 1, i, ".csv"))
-            write.csv(playoff, file = paste0("./wha", i - 1, i, "Playoffs.csv"))
+            write.csv(regular, file = paste0(data_dir,"/wha", i - 1, i, ".csv"))
+            write.csv(playoff, file = paste0(data_dir,"/wha", i - 1, i, "Playoffs.csv"))
         }
         message(paste0(" Waiting ", wait, " seconds."))
         Sys.sleep(wait)
     }
 }
 
-getAndSaveNHLGames <- function(start = 1918, end = 2017, wait = 30) {
+getAndSaveNHLGames <- function(start = 1918, end = 2017, wait = 30, data_dir=".") {
     if (!require(XML)) {
         return(FALSE)
     }
@@ -84,7 +84,7 @@ getAndSaveNHLGames <- function(start = 1918, end = 2017, wait = 30) {
         message("Can't collect 2004-2005. No season due to lockout. Collecting to 2003-2004 to there.")
         end <- 2004
     }
-    
+
     for (i in c(start:end)) {
         # No season in 2004-2005. Don't try process that year.
         if (i == 2005) {
@@ -108,9 +108,9 @@ getAndSaveNHLGames <- function(start = 1918, end = 2017, wait = 30) {
             regular <- tables[["games"]]
             playoff <- tables[["games_playoffs"]]
             message(" Saving...", "\r", appendLF = FALSE)
-            write.csv(regular, file = paste0("./", i - 1, i, ".csv"))
+            write.csv(regular, file = paste0(data_dir,"/", i - 1, i, ".csv"))
             if (!is.null(playoff)) {
-                write.csv(playoff, file = paste0("./", i - 1, i, "Playoffs.csv"))
+                write.csv(playoff, file = paste0(data_dir,"/", i - 1, i, "Playoffs.csv"))
             }
         }
         message(paste0("Waiting ", wait, " seconds."))

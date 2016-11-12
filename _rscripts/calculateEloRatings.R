@@ -360,22 +360,24 @@ metaElo <- function(ratings_history, calcDates = NULL, teams=NULL) {
 
 #' Helper function for incoming data
 tieSort<-function(x) {
-    if (x[3] > x[5]){
-        if (x[6] %in% c("SO")){
+    if (as.numeric(x['VisitorGoals']) > as.numeric(x['HomeGoals'])){
+        print(x)
+        if (x['OTStatus'] %in% c("SO")){
             return(0.4)
         }
-        else if (x[6] %in% c("2OT", "3OT", "4OT", "5OT", "6OT", "OT")){
+        else if (x['OTStatus'] %in% c("2OT", "3OT", "4OT", "5OT", "6OT", "OT")){
             return(0.25)
         }
         else{
             return(0.0)
         }
     }
-    else if (x[3] < x[5]){
-        if (x[6] %in% c("SO")){
+    else if (as.numeric(x['VisitorGoals']) < as.numeric(x['HomeGoals'])){
+        message('home')
+        if (x['OTStatus'] %in% c("SO")){
             return(0.6)
         }
-        else if (x[6] %in% c("2OT", "3OT", "4OT", "5OT", "6OT", "OT")){
+        else if (x['OTStatus'] %in% c("2OT", "3OT", "4OT", "5OT", "6OT", "OT")){
             return(0.75)
         }
         else{
