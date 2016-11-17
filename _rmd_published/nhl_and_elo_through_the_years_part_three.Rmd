@@ -132,19 +132,23 @@ for (i in unique(round(nhl_data$EloDiff))){
 }
 propresults<-as.data.frame(propresults)
 
-proplong<-melt(propresults, id.vars = 'EloDiff', value.name = "Proportion", variable.name = "Result")
-proplong<-proplong[order(proplong$EloDiff), ]
+propresults<-propresults[order(propresults$EloDiff), ]
+propresults$Total<-propresults$Win+propresults$Draw+propresults$Loss
 
-fitwin<-glm(propresults$Win ~ propresults$EloDiff)
-fitdraw<-glm(propresults$Draw ~ propresults$EloDiff)
-fitloss<-glm(propresults$Loss ~ propresults$EloDiff)
-sumintercept<-fitwin$coefficients[1]+fitdraw$coefficients[1]+fitloss$coefficients[1]
-sumslope<-fitwin$coefficients[2]+fitdraw$coefficients[2]+fitloss$coefficients[2]
+propresults$nWin<-propresults$Draw+propresults$Loss
+propresults$nLoss<-propresults$Draw+propresults$Win
 
-ggplot(proplong, aes(x=EloDiff, y=Proportion, colour=Result)) + 
-    geom_point(alpha=0.2) + 
-    geom_smooth(method='glm', formula=y~x) +
-    geom_segment(aes(x = -460, y = (sumintercept+(sumslope*-460)), xend = 458, yend = (sumintercept+(sumslope*458)), colour = 'Sum of Fits', show.legend=TRUE)) +
+propresults$pWin<-glm(cbind(Win, nWin)~EloDiff, data = propresults, family = binomial('logit'))$fitted
+propresults$pLoss<-glm(cbind(Loss, nLoss)~EloDiff, data = propresults, family = binomial('logit'))$fitted
+propresults$pDraw<-1-(propresults$pWin+propresults$pDraw)
+
+ggplot(propresults) +
+    geom_point(aes(x=EloDiff, y=Win/Total, colour='Win'), alpha=0.2)+
+    geom_point(aes(x=EloDiff, y=Draw/Total, colour='Draw'), alpha=0.2)+
+    geom_point(aes(x=EloDiff, y=Loss/Total, colour='Loss'), alpha=0.2)+
+    geom_line(aes(x=EloDiff, y=pWin, colour='Win Fitted'))+
+    geom_line(aes(x=EloDiff, y=pDraw, colour='Draw Fitted'))+
+    geom_line(aes(x=EloDiff, y=pLoss, colour='Loss Fitted'))+
     theme_bw() +
     ggtitle("Elo Difference vs. Proportion of Results") +
     xlab("Elo Difference (Home-Away)") +

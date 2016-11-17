@@ -94,6 +94,12 @@ ggplot(nhl_data) +
     ylab("Elo Difference (Home-Away)")
 {% endhighlight %}
 
+
+
+{% highlight text %}
+## `geom_smooth()` using method = 'gam'
+{% endhighlight %}
+
 ![plot of chunk elo_vs_goal_diff](/images/elo_vs_goal_diff-1.png)
  
 That looks much better. There are many examples of teams with better ratings losing, but they typically don't lose by much. The inverse is true too. 
@@ -102,7 +108,7 @@ We can look at the data and say, with more confidence, that there is a loose rel
  
 
  
-For those who are curious, the equation of that line of best fit is y=10.420061162924x-5.47926227051295. 
+For those who are curious, the equation of that line of best fit is y=10.3985427293911x-5.45446888161381. 
  
 One other thing we can do is plot proportion of wins, losses and ties by Elo Difference:
  
@@ -119,24 +125,66 @@ for (i in unique(round(nhl_data$EloDiff))){
 }
 propresults<-as.data.frame(propresults)
  
-proplong<-melt(propresults, id.vars = 'EloDiff', value.name = "Proportion", variable.name = "Result")
-proplong<-proplong[order(proplong$EloDiff), ]
+propresults<-propresults[order(propresults$EloDiff), ]
+propresults$Total<-propresults$Win+propresults$Draw+propresults$Loss
  
-fitwin<-glm(propresults$Win ~ propresults$EloDiff)
-fitdraw<-glm(propresults$Draw ~ propresults$EloDiff)
-fitloss<-glm(propresults$Loss ~ propresults$EloDiff)
-sumintercept<-fitwin$coefficients[1]+fitdraw$coefficients[1]+fitloss$coefficients[1]
-sumslope<-fitwin$coefficients[2]+fitdraw$coefficients[2]+fitloss$coefficients[2]
+propresults$nWin<-propresults$Draw+propresults$Loss
+propresults$nLoss<-propresults$Draw+propresults$Win
  
-ggplot(proplong, aes(x=EloDiff, y=Proportion, colour=Result)) + 
-    geom_point(alpha=0.2) + 
-    geom_smooth(method='glm', formula=y~x) +
-    geom_segment(aes(x = -460, y = (sumintercept+(sumslope*-460)), xend = 458, yend = (sumintercept+(sumslope*458)), colour = 'Sum of Fits', show.legend=TRUE)) +
+propresults$pWin<-glm(cbind(Win, nWin)~EloDiff, data = propresults, family = binomial('logit'))$fitted
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Warning: non-integer counts in a binomial glm!
+{% endhighlight %}
+
+
+
+{% highlight r %}
+propresults$pLoss<-glm(cbind(Loss, nLoss)~EloDiff, data = propresults, family = binomial('logit'))$fitted
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Warning: non-integer counts in a binomial glm!
+{% endhighlight %}
+
+
+
+{% highlight r %}
+propresults$pDraw<-1-(propresults$pWin+propresults$pDraw)
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Error in `$<-.data.frame`(`*tmp*`, "pDraw", value = numeric(0)): replacement has 0 rows, data has 752
+{% endhighlight %}
+
+
+
+{% highlight r %}
+ggplot(propresults) +
+    geom_point(aes(x=EloDiff, y=Win/Total, colour='Win'), alpha=0.2)+
+    geom_point(aes(x=EloDiff, y=Draw/Total, colour='Draw'), alpha=0.2)+
+    geom_point(aes(x=EloDiff, y=Loss/Total, colour='Loss'), alpha=0.2)+
+    geom_line(aes(x=EloDiff, y=pWin, colour='Win Fitted'))+
+    geom_line(aes(x=EloDiff, y=pDraw, colour='Draw Fitted'))+
+    geom_line(aes(x=EloDiff, y=pLoss, colour='Loss Fitted'))+
     theme_bw() +
     ggtitle("Elo Difference vs. Proportion of Results") +
     xlab("Elo Difference (Home-Away)") +
     ylab("Proportion of Each Result") +
     scale_colour_brewer(palette = "Dark2")
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Error in eval(expr, envir, enclos): object 'pDraw' not found
 {% endhighlight %}
 
 ![plot of chunk proportion_results](/images/proportion_results-1.png)
