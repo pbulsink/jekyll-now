@@ -71,11 +71,8 @@ for(i in c(1:nreps)){
 
 This gives us a winning subject proportion of  `r sum(subjects_props)/nreps`.
 
-For an arbitrary kingdom size, we can repeat this Let's do this conceptually as a repeated parallel test, then also as a parallelized task.
+For an arbitrary kingdom size, we can repeat this. We could repeat the above task for every kingdom size from one to one million, and plot the proportions to try understand the trend. 
 
-We could repeat the above task for every kingdom size from one to one million, and plot the proportions to try understand the trend. 
-
-Or, if we make the above a function, we can call a parallel version of lapply, and chew through this faster. We'll use the base parallel tools, there are more advanced available.
 
 ```{r par_function}
 par_simulate<-function(n_subjects, nreps){
@@ -87,11 +84,7 @@ par_simulate<-function(n_subjects, nreps){
     return(subjects_props/nsubjects)
 }
 
-# Calculate the number of cores on this machine
-no_cores <- detectCores() - 1
- 
-# Initiate cluster
-cl <- makeCluster(no_cores)
-clusterExport(cl, c("par_simulate", "removerLoop"))
-
-parLapply(cl, c(2, seq(10, 1000000, by=10)), function(x) par_simulate(x, 100))
+proplist<-list()
+for(i in c(2, seq(10, 100000, 100))){
+    proplist[i]<-par_simulate(i, 100)
+}
