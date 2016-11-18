@@ -119,9 +119,9 @@ propresults<-list(EloDiff=numeric(), Win=numeric(), Draw=numeric(), Loss=numeric
 for (i in unique(round(nhl_data$EloDiff))){
     propresults$EloDiff<-c(propresults$EloDiff, i)
     x<-nhl_data[round(nhl_data$EloDiff) == i,]
-    propresults$Win<-c(propresults$Win, length(x[x$Result == 1,'Result'])/nrow(x))
-    propresults$Draw<-c(propresults$Draw, length(x[(x$Result < 0.61 & x$Result > 0.39),'Result'])/nrow(x))
-    propresults$Loss<-c(propresults$Loss, length(x[x$Result == 0,'Result'])/nrow(x))
+    propresults$Win<-c(propresults$Win, length(x[x$Result == 1,'Result']))
+    propresults$Draw<-c(propresults$Draw, length(x[(x$Result < 0.61 & x$Result > 0.39),'Result']))
+    propresults$Loss<-c(propresults$Loss, length(x[x$Result == 0,'Result']))
 }
 propresults<-as.data.frame(propresults)
  
@@ -132,41 +132,9 @@ propresults$nWin<-propresults$Draw+propresults$Loss
 propresults$nLoss<-propresults$Draw+propresults$Win
  
 propresults$pWin<-glm(cbind(Win, nWin)~EloDiff, data = propresults, family = binomial('logit'))$fitted
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Warning: non-integer counts in a binomial glm!
-{% endhighlight %}
-
-
-
-{% highlight r %}
 propresults$pLoss<-glm(cbind(Loss, nLoss)~EloDiff, data = propresults, family = binomial('logit'))$fitted
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Warning: non-integer counts in a binomial glm!
-{% endhighlight %}
-
-
-
-{% highlight r %}
-propresults$pDraw<-1-(propresults$pWin+propresults$pDraw)
-{% endhighlight %}
-
-
-
-{% highlight text %}
-## Error in `$<-.data.frame`(`*tmp*`, "pDraw", value = numeric(0)): replacement has 0 rows, data has 752
-{% endhighlight %}
-
-
-
-{% highlight r %}
+propresults$pDraw<-1-(propresults$pWin+propresults$pLoss)
+ 
 ggplot(propresults) +
     geom_point(aes(x=EloDiff, y=Win/Total, colour='Win'), alpha=0.2)+
     geom_point(aes(x=EloDiff, y=Draw/Total, colour='Draw'), alpha=0.2)+
@@ -184,7 +152,19 @@ ggplot(propresults) +
 
 
 {% highlight text %}
-## Error in eval(expr, envir, enclos): object 'pDraw' not found
+## Warning: Removed 1 rows containing missing values (geom_point).
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Warning: Removed 1 rows containing missing values (geom_point).
+{% endhighlight %}
+
+
+
+{% highlight text %}
+## Warning: Removed 1 rows containing missing values (geom_point).
 {% endhighlight %}
 
 ![plot of chunk proportion_results](/images/proportion_results-1.png)

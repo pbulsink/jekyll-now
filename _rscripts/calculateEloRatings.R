@@ -361,7 +361,6 @@ metaElo <- function(ratings_history, calcDates = NULL, teams=NULL) {
 #' Helper function for incoming data
 tieSort<-function(x) {
     if (as.numeric(x['VisitorGoals']) > as.numeric(x['HomeGoals'])){
-        print(x)
         if (x['OTStatus'] %in% c("SO")){
             return(0.4)
         }
@@ -373,7 +372,6 @@ tieSort<-function(x) {
         }
     }
     else if (as.numeric(x['VisitorGoals']) < as.numeric(x['HomeGoals'])){
-        message('home')
         if (x['OTStatus'] %in% c("SO")){
             return(0.6)
         }
