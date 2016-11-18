@@ -1,0 +1,97 @@
+---
+title: "The Puzzle Of The Lonesome King"
+author: "Philip Bulsink"
+date: "November 18, 2016"
+status: process
+published: false
+layout: post
+excerpt_separator: <!--more-->
+tags: Riddler simulation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(1234)
+```
+
+From [http://fivethirtyeight.com/features/the-puzzle-of-the-lonesome-king/](http://fivethirtyeight.com/features/the-puzzle-of-the-lonesome-king/).
+
+A coronation probability puzzle from Charles Steinhardt:
+
+The childless King of Solitaria lives alone in his castle. Overly lonely, the king one day offers one lucky subject the chance to be prince or princess for a day. The loyal subjects leap at the opportunity, having heard tales of the opulent castle and decadent meals that will be lavished upon them. The subjects assemble on the village green, hoping to be chosen.
+
+The winner is chosen through the following game. In the first round, every subject simultaneously chooses a random other subject on the green. (It's possible, of course, that some subjects will be chosen by more than one other subject.) Everybody chosen is eliminated. (Not killed or anything, just sent back to their hovels.) In each successive round, the subjects who are still in contention simultaneously choose a random remaining subject, and again everybody chosen is eliminated. If there is eventually exactly one subject remaining at the end of a round, he or she wins and heads straight to the castle for fêting. However, it's also possible that everybody could be eliminated in the last round, in which case nobody wins and the king remains alone. If the kingdom has a population of 56,000 (not including the king), is it more likely that a prince or princess will be crowned or that nobody will win?
+
+Extra credit: How does the answer change for a kingdom of arbitrary size?
+
+##My Answer##
+
+This is a problem easily solved by simulation.
+
+We'll start by setting up a few variables:
+```{r var_init}
+n_subjects <- subjects_remaining <- 56000
+subjects_in_competition <- c(1:n_subjects)
+```
+
+Now, we'll run a loop removing all those chosen by a random number initiator.
+
+```{r remove_loop}
+while (subjects_remaining > 1){
+    chosen_subjects <- runif(subjects_remaining, min=1, max=subjects_remaining)
+    subjects_in_competition<-subjects_in_competition[-chosen_subjects]
+    subjects_remaining<-length(subjects_in_competition)
+}
+```
+
+The first time we run this, we get: `r paste0('subjects_remaining = ',subjects_remaining)`.
+
+To get a proportion of times that a subject is crowned vs. the king remains lonely, we'll repeat this often, using the above loop as a function.
+
+```{r remover_loop_function, echo=FALSE, message=FALSE}
+removerLoop<-function(subjects_in_competition){
+    subjects_remaining<-length(subjects_in_competition)
+    while (subjects_remaining > 1){
+        chosen_subjects <- sample(1:subjects_remaining, replace=TRUE)
+        subjects_in_competition<-subjects_in_competition[-chosen_subjects]
+        subjects_remaining<-length(subjects_in_competition)
+    }
+    return(subjects_remaining)
+}
+```
+
+```{r simulate_removal}
+subjects_props<-numeric()
+nreps<-100
+for(i in c(1:nreps)){
+    subjects_in_competition <- c(1:n_subjects)
+    subjects_props<-c(subjects_props, removerLoop(subjects_in_competition))
+}
+```
+
+This gives us a winning subject proportion of  `r sum(subjects_props)/nreps`.
+
+For an arbitrary kingdom size, we can repeat this Let's do this conceptually as a repeated parallel test, then also as a parallelized task.
+
+We could repeat the above task for every kingdom size from one to one million, and plot the proportions to try understand the trend. 
+
+Or, if we make the above a function, we can call a parallel version of lapply, and chew through this faster. We'll use the base parallel tools, there are more advanced available.
+
+```{r par_function}
+par_simulate<-function(n_subjects, nreps){
+    subjects_props<-0
+    for(i in c(1:nreps)){
+        subjects_in_competition <- c(1:n_subjects)
+        subjects_props<-subjects_props +  removerLoop(subjects_in_competition)
+    }
+    return(subjects_props/nsubjects)
+}
+
+# Calculate the number of cores on this machine
+no_cores <- detectCores() - 1
+ 
+# Initiate cluster
+cl <- makeCluster(no_cores)
+clusterExport(cl, c("par_simulate", "removerLoop"))
+
+parLapply(cl, c(2, seq(10, 1000000, by=10)), function(x) par_simulate(x, 100))
