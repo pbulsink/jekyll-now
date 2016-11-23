@@ -287,6 +287,7 @@ prepareEloData <- function(hockeyData, cleanTeams = TRUE, identifyTies = TRUE, l
     if (eloResults) {
         message('calculating Elo results')
         hockeyData$Result <- apply(hockeyData, 1, function(x) tieSort(x))
+        hockeyData$Diff <- abs(hockeyData$HomeGoals - hockeyData$VisitorGoals)
     }
 
     return(hockeyData)

@@ -1,71 +1,17 @@
-buildScoreMatrix <- function(res, home, away, maxgoal = 8, m = NULL) {
-    if (!is.null(m)) {
-        # Expected goals home
-        lambda <- predict(m, data.frame(Home = 1, Team = home, Opponent = away), type = "response")
-        
-        # Expected goals away
-        mu <- predict(m, data.frame(Home = 0, Team = away, Opponent = home), type = "response")
-        
-        # rho
-        rho <- res$par
-    } else {
-        attack.home <- paste("Attack", home, sep = ".")
-        attack.away <- paste("Attack", away, sep = ".")
-        defence.home <- paste("Defence", home, sep = ".")
-        defence.away <- paste("Defence", away, sep = ".")
-        
-        # Expected goals home
-        lambda <- exp(res$par["HOME"] + res$par[attack.home] + res$par[defence.away])
-        # Expected goals away
-        mu <- exp(res$par[attack.away] + res$par[defence.home])
-        rho <- res$par["RHO"]
-    }
-    probability_matrix <- dpois(0:maxgoal, lambda) %*% t(dpois(0:maxgoal, mu))
-    
-    scaling_matrix <- matrix(tau(c(0, 1, 0, 1), c(0, 0, 1, 1), lambda, mu, rho), nrow = 2)
-    probability_matrix[1:2, 1:2] <- probability_matrix[1:2, 1:2] * scaling_matrix
-    
-    pmatrix <- matrix(nrow = nrow(probability_matrix), ncol = ncol(probability_matrix))
-    current_p <- 0
-    for (i in 1:ncol(pmatrix)) {
-        for (j in 1:nrow(pmatrix)) {
-            pmatrix[j, i] <- current_p
-            current_p <- current_p + probability_matrix[j, i]
-        }
-    }
-    return(pmatrix)
-}
 
-predictOneGame <- function(pmatrix, stats, home, away) {
+predictOneGame <- function(elo_diff, ) {
     random <- runif(1)
     # Ensure random isn't higher than matrix sum (calculation at less than indexed).
     while (random > pmatrix[nrow(pmatrix), ncol(pmatrix)]) {
         random <- runif(1)
     }
-    score <- as.vector(which(pmatrix > random, arr.ind = T)[1, ])
-    # scores is matrix c(home away) as INDEXES (eg. 0-0 score is 1,1)
-    score <- score - 1
-    score[3] <- NA
-    if (score[1] == score[2]) {
-        log5 <- log5OTPredictor(stats, home, away)
-        if (log5 > runif(1)) {
-            score[1] <- score[1] + 1
-        } else {
-            score[2] <- score[2] + 1
-        }
-        if (runif(1) > 0.5) {
-            score[3] <- "OT"
-        } else {
-            score[3] <- "SO"
-        }
-    }
-    return(score)
+    
+    return(result)
 }
 
 makeStatsTable <- function(df) {
     tmpTable = data.frame(Team = sort(unique(df$AwayTeam)), GP = 0, W = 0, OTL = 0, L = 0, ROW = 0, HomeGames = 0, HomeWin = 0, HomeOTW = 0, HomeSOW = 0, 
-        HomeOTL = 0, HomeLoss = 0, AwayGames = 0, AwayWin = 0, AwayOTW = 0, AwaySOW = 0, AwayOTL = 0, AwayLoss = 0, P = 0, HomeFor = 0, HomeAgainst = 0, 
-        AwayFor = 0, AwayAgainst = 0, GF = 0, GA = 0, DIFF = 0, PPG = 0, OT.Win.Percent = 0)
+        HomeOTL = 0, HomeLoss = 0, AwayGames = 0, AwayWin = 0, AwayOTW = 0, AwaySOW = 0, AwayOTL = 0, AwayLoss = 0, P = 0, PPG = 0, OT.Win.Percent = 0)
     
     # Games Played
     tmpTable$HomeGames = as.numeric(table(df$HomeTeam))
@@ -97,33 +43,19 @@ makeStatsTable <- function(df) {
     tmpTable$L = tmpTable$HomeLoss + tmpTable$AwayLoss
     tmpTable$ROW = tmpTable$W - (tmpTable$HomeSOW + tmpTable$AwaySOW)
     
-    # Goal Diffs (includes OT scores)
-    tmpTable$HomeFor = as.numeric(tapply(df$HG, df$HomeTeam, sum, na.rm = TRUE)) + tmpTable$HomeOTW + tmpTable$HomeSOW
-    tmpTable$HomeAgainst = as.numeric(tapply(df$AG, df$HomeTeam, sum, na.rm = TRUE)) + tmpTable$HomeOTL
-    
-    tmpTable$AwayFor = as.numeric(tapply(df$AG, df$AwayTeam, sum, na.rm = TRUE)) + tmpTable$AwayOTW + tmpTable$AwaySOW
-    tmpTable$AwayAgainst = as.numeric(tapply(df$HG, df$AwayTeam, sum, na.rm = TRUE)) + tmpTable$AwayOTL
-    
-    
-    tmpTable$GF = ifelse(is.na(tmpTable$HomeFor), 0, tmpTable$HomeFor) + ifelse(is.na(tmpTable$AwayFor), 0, tmpTable$AwayFor)
-    tmpTable$GA = ifelse(is.na(tmpTable$HomeAgainst), 0, tmpTable$HomeAgainst) + ifelse(is.na(tmpTable$AwayAgainst), 0, tmpTable$AwayAgainst)
-    
-    tmpTable$DIFF = tmpTable$GF - tmpTable$GA
-    
     # Additional Stats
     tmpTable$P = (2 * tmpTable$W) + tmpTable$OTL
     tmpTable$PPG = tmpTable$P/tmpTable$GP
     tmpTable$OT.Win.Percent = (tmpTable$HomeOTW + tmpTable$HomeSOW + tmpTable$AwayOTW + tmpTable$AwaySOW)/(tmpTable$HomeOTW + tmpTable$HomeSOW + tmpTable$AwayOTW + 
         tmpTable$AwayOTL + tmpTable$OTL)
-    tmpTable <- tmpTable[, c("Team", "GP", "W", "OTL", "L", "ROW", "P", "GF", "GA", "DIFF", "PPG", "OT.Win.Percent")]
-    tmpTable <- tmpTable[order(-tmpTable$P, -tmpTable$PPG, -tmpTable$ROW, -tmpTable$DIFF), ]
+    tmpTable <- tmpTable[, c("Team", "GP", "W", "OTL", "L", "ROW", "P", "PPG", "OT.Win.Percent")]
+    tmpTable <- tmpTable[order(-tmpTable$P, -tmpTable$PPG, -tmpTable$ROW), ]
     
     rownames(tmpTable) <- 1:nrow(tmpTable)
     
     return(tmpTable)
 }
 
-# stats2015<-makeStatsTable(nhl2015) stats_all<-makeStatsTable(nhl_all)
 
 buildStandingsTable <- function(stats, standings = NULL) {
     if (is.null(standings)) {
