@@ -6,16 +6,25 @@
 #' @param mean_value optional: The mean value to regress results to at the end of the season. Default: 1500
 #' @param new_teams optional: The ranking that new teams should have. Default: 1500
 #' @param regress_strength optional: The amount by which to regress to mean. Set = 0 to turn off regression. Default: 3 (1/3 regression to mean.)
-#' @param home_adv: The home advantage, in rating points. Default: 35
+#' @param home_adv The home advantage, in rating points. Default: 35
+#' @param k_var optional: Whether to use fixed k or variable k. If variable, k' is set by k param. Then requires goal diff values.
+#' @param delta optional: delta value for variable k.
 #'
 #' @return named list(ratings, meta) containg the Elo Rating for each team through time, and meta statistics if requested
 #' @examples
 #' calculateEloRatings(nhl20102011)
 #' calculateEloRatings(nhl20152016, ratings_history=hist_elo, k=10, mean_value=1505, new_teams=1350)
-calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_value = 1500, new_teams = 1300, meta = TRUE, regress_strength=3, home_adv=35) {
+calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_value = 1500, new_teams = 1300, meta = TRUE, regress_strength=3, home_adv=35, k_var=FALSE, delta=1) {
     # Ensuring Opts are ok.
-    stopifnot(ncol(schedule) == 4, nrow(schedule) > 0)
-    names(schedule) <- c("Date", "HomeTeam", "AwayTeam", "Result")
+    if (!k_var){
+        stopifnot(ncol(schedule) == 4, nrow(schedule) > 0)
+        names(schedule) <- c("Date", "HomeTeam", "AwayTeam", "Result")
+        schedule$Diff<-NA
+    }
+    else {
+        stopifnot(ncol(schedule) == 5, nrow(schedule) > 0)
+        names(schedule) <-c("Date", "HomeTeam", "AwayTeam", "Result", "Diff")
+    }
     schedule$HomeTeam <- as.character(schedule$HomeTeam)
     schedule$AwayTeam <- as.character(schedule$AwayTeam)
     team_names = unique(c(schedule$HomeTeam, schedule$AwayTeam))
@@ -28,6 +37,7 @@ calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_v
     stopifnot(is.numeric(k), k >= 0, k < 100)
     stopifnot(is.numeric(mean_value))
     stopifnot(is.numeric(new_teams))
+    stopifnot(is.numeric(delta))
 
     # Massage Data & Extract Extras
     game_dates <- sort(unique(schedule$Date))
@@ -47,7 +57,7 @@ calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_v
         for (i in c(1:(length(split_dates)-1))) {
 
 
-            newseason<-.eloSeason(schedule=schedule, dates=split_dates[[i]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k, home_adv = home_adv)
+            newseason<-.eloSeason(schedule=schedule, dates=split_dates[[i]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k, home_adv = home_adv, k_var = k_var, delta=delta)
 
             ifelse (newseason$newteam, ratings_history <- merge(ratings_history, newseason$ratings, all=TRUE), ratings_history<-rbind(ratings_history, newseason$ratings, make.row.names=FALSE))
 
@@ -68,7 +78,7 @@ calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_v
     }
 
     #One (last) season
-    newseason<-.eloSeason(schedule=schedule, dates=split_dates[[length(split_dates)]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k, home_adv = home_adv)
+    newseason<-.eloSeason(schedule=schedule, dates=split_dates[[length(split_dates)]], ratings = ratings_history[nrow(ratings_history),,drop=FALSE], new_teams = new_teams, k=k, home_adv = home_adv, k_var=k_var, delta=delta)
     ifelse (newseason$newteam, ratings_history <- merge(ratings_history, newseason$ratings, all=TRUE), ratings_history<-rbind(ratings_history, newseason$ratings, make.row.names=FALSE))
 
     if (meta) {
@@ -102,12 +112,27 @@ predictEloResult <- function(home_rank, away_rank, h_adv=0) {
 #'
 #' @return A vector with two new ratings for Home and Away team, respectively
 #'
-newRankings <- function(home_rank, away_rank, result, k = 8, h_adv=0) {
+newRankings <- function(home_rank, away_rank, result, k = 8, h_adv=0, k_var=FALSE, delta=1, diff=0) {
     # result is in set [0, 0.25, 0.4, 0.50, 0.6, 0.75, 1]
+    if (k_var){
+        k<-variableK(diff = diff, k_prime = k, delta = delta)
+    }
     p<-predictEloResult(as.numeric(home_rank), as.numeric(away_rank), h_adv)
     h_rank <- as.numeric(home_rank) + k * (as.numeric(result) - p)
     a_rank <- as.numeric(away_rank) + k * ((1 - as.numeric(result)) - (1 - p))
     return(c(h_rank, a_rank))
+}
+
+#'K can be a variable value, rewarding bigger wins more. k'*(1+diff)^delta
+#'
+#' @param diff Goal differential
+#' @param k_prime Base k' value
+#' @param delta Exponential reward
+#'
+#' @return numerical k value for a specified goal differential
+variableK<-function(diff, k_prime=10, delta=1){
+    diff<-abs(diff)
+    return(k_prime*(1+diff)^delta)
 }
 
 #'Split dates to by season if multiple seasons are calculated together
@@ -144,7 +169,7 @@ splitDates <- function(game_dates, season_split = "-08-01") {
 
 #'Calculate 1 season worth of elo
 #'
-.eloSeason <- function(schedule, dates, ratings, new_teams, k, home_adv) {
+.eloSeason <- function(schedule, dates, ratings, new_teams, k, home_adv, k_var, delta) {
     newteam<-FALSE
     teams<-character()
     for (i in c(1:length(unique(dates)))){
@@ -163,7 +188,7 @@ splitDates <- function(game_dates, season_split = "-08-01") {
 
         #hack to replace new (formally dropped out teams) as a new team with score new_teams
         newelos[,c(h,v)][is.na(newelos[,c(h,v)])]<-new_teams
-        newrank<-newRankings(home_rank = newelos[1,h], away_rank=newelos[1,v], result=s[,"Result"], k=k, h_adv = home_adv)
+        newrank<-newRankings(home_rank = newelos[1,h], away_rank=newelos[1,v], result=s[,"Result"], k=k, h_adv = home_adv, k_var=k_var, delta=delta, diff=s[,"Diff"])
 
         ngames<-length(h)
         newelos[1,h]<-newrank[c(1:ngames)]
