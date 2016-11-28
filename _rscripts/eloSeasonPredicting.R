@@ -1,7 +1,7 @@
 
 predictOneGame <- function(elo_diff, pWin, pLoss) {
-    w<-predict(pWin, data.frame("EloDiff"=elo_diff))
-    l<-predict(pLoss, data.frame("EloDiff"=elo_diff))
+    w<-predict(pWin, data.frame("EloDiff"=elo_diff), type='response')
+    l<-predict(pLoss, data.frame("EloDiff"=elo_diff), type='response')
 
     r<-runif(1)
 
