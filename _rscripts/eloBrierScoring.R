@@ -102,7 +102,7 @@ seasonBrierAdjScore<-function(eloHist, schedule, pWin, pLoss){
     pr<-getPredictedResults(eloHist, schedule, pWin, pLoss)
     predicted<-pr$predicted
     results<-pr$results
-    return(sum(calcscore(results2~predicted$VWin+predicted$VOT+predicted$VSO+predicted$HSO+predicted$HOT+predicted$HWin, bounds=c(0,1)))/nrow(predicted))
+    return(sum(calcscore(results~predicted$VWin+predicted$VOT+predicted$VSO+predicted$HSO+predicted$HOT+predicted$HWin, bounds=c(0,1)))/nrow(predicted))
 }
 
 scoreEloVar<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data){
@@ -207,4 +207,18 @@ pResCalc<-function(elo, nhl_data){
     pLoss<-glm(cbind(Loss, nLoss)~EloDiff, data = propresults, family = binomial('logit'))
 
     return(list('pWin'=pWin, 'pLoss'=pLoss))
+}
+
+eloVarPlotData<-function(nhl_data){
+    scores<-matrix(rep(1), nrow=length(c(1:25)), ncol=length(c(0:30)))
+
+    for(i in c(1:25)){
+        for (j in c(0:30)){
+            scores[i,j]<-scoreEloVar(p=c(i, j/10), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
+            message(paste0('Score: ', scores[i,j]))
+        }
+    }
+    rownames(scores)<-c(1:25)
+    colnames(scores)<-c(1:30)/10
+    return(scores)
 }
