@@ -1,8 +1,9 @@
 source("./_rscripts/eloSeasonPredicting.R")
+source("./_rscripts/calculateEloRatings.R")
 require(scoring)
 require(reshape2)
 require(optimx)
-require(parallel)
+require(doParallel)
 
 #' Calculates and returns brier score
 #'
@@ -31,10 +32,9 @@ adjBrier<-function(predicted, results){
 #' @return A list of 2 data frames of predictions and actual results
 getPredictedResults<-function(eloHist, schedule,pWin,pLoss){
     #For recent Elo, we have results of 0, 0.25, 0.4, 0.6, 0.75, 1
-    #Coded as VWin,VOT,VSO,HSO,HOT,HWin
-    #While ties existed in the past, they'll artificially boost our performance
+    #Coded as VWin, Draw ,HWin
     ngames<-nrow(schedule)
-    predicted<-data.frame('VWin'=rep(0,ngames), 'VOT'=rep(0), 'VSO'=rep(0), 'HSO'=rep(0), 'HOT'=rep(0), 'HWin'=rep(0))
+    predicted<-data.frame('VWin'=rep(0,ngames), 'D'=rep(0), 'HWin'=rep(0))
     results<-rep(0, ngames)
     for(g in c(1:ngames)){
         home<-make.names(as.character(schedule[g,'Home']))
@@ -45,35 +45,17 @@ getPredictedResults<-function(eloHist, schedule,pWin,pLoss){
         if (schedule[g,'Result'] == 0){
             results[g]<-1
         }
-        else if (schedule[g,'Result'] == 0.25){
-            results[g]<-2
-        }
-        else if (schedule[g,'Result'] == 0.40){
+        else if (schedule[g,'Result'] == 1){
             results[g]<-3
         }
-        else if (schedule[g,'Result'] == 0.60){
-            results[g]<-4
-        }
-        else if (schedule[g,'Result'] == 0.75){
-            results[g]<-5
-        }
-        else if (schedule[g,'Result'] == 1){
-            results[g]<-6
+        else{
+            results[g]<-2
         }
         #Predictions
         predicted[g,'VWin']<-v<-predict(pLoss, data.frame("EloDiff"=elo_diff), type='response')
         predicted[g,'HWin']<-h<-predict(pWin, data.frame("EloDiff"=elo_diff), type='response')
-        #Draw
-        d<-1-(v+h)
-        #log5 home win in OT/SO
-        l<-1-h
-        phw<-(h-h*l)/(h+l-2*h*l)
-
-        predicted[g,'VOT']<-0.4*(1-phw)*d
-        predicted[g,'VSO']<-0.6*(1-phw)*d
-        predicted[g,'HSO']<-0.6*phw*d
-        predicted[g,'HOT']<-0.4*phw*d
     }
+    predicted$D<-1-(predicted$VWin+predicted$HWin)
     return(list('predicted'=predicted, 'results'=results))
 }
 
@@ -102,7 +84,7 @@ seasonBrierAdjScore<-function(eloHist, schedule, pWin, pLoss){
     pr<-getPredictedResults(eloHist, schedule, pWin, pLoss)
     predicted<-pr$predicted
     results<-pr$results
-    return(sum(calcscore(results~predicted$VWin+predicted$VOT+predicted$VSO+predicted$HSO+predicted$HOT+predicted$HWin, bounds=c(0,1)))/nrow(predicted))
+    return(sum(calcscore(results~predicted$VWin+predicted$D+predicted$HWin, bounds=c(0,1)))/nrow(predicted))
 }
 
 scoreEloVar<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data){
@@ -167,6 +149,10 @@ optEloVar2<-function(nhl_data){
 
 pResCalc<-function(elo, nhl_data){
     message('massage elo data')
+
+    #PWin/PLoss since 2005 when Shootout came into effect.
+    elo<-elo[elo$Date > as.Date('2005-08-31'),]
+    nhl_data<-nhl_data[nhl_data$Date > as.Date('2005-08-31'),]
     elo_long<-melt(elo, id = "Date", value.name = "Rating", variable.name = "Team", na.rm = TRUE)
     elo_long<-rbind(elo_long, NA)
     #removes rows where no change has occurred (a team didn't play)
@@ -177,13 +163,8 @@ pResCalc<-function(elo, nhl_data){
         elod<-tail(elo[elo$Date < as.Date(game['Date']), make.names(c(game['Home'], game['Visitor']))], 1)
         return(as.numeric(elod[1] - elod[2]))
     }
-    #cl <- makeForkCluster(getOption('cl.cores', 3))
     nhl_data$EloDiff<-0
     nhl_data$EloDiff<-apply(nhl_data, 1, function(x) eloAtGameTime(x))
-    #stopCluster(cl)
-
-    #gameresults<-matrix(unlist(gameresults), byrow=TRUE, ncol=2)
-    #nhl_data$EloDiff<-nhl_data$HomeElo-nhl_data$VisitorElo
 
     propresults<-list(EloDiff=numeric(), Win=numeric(), Draw=numeric(), Loss=numeric())
 
@@ -210,15 +191,12 @@ pResCalc<-function(elo, nhl_data){
 }
 
 eloVarPlotData<-function(nhl_data){
-    scores<-matrix(rep(1), nrow=length(c(1:25)), ncol=length(c(0:30)))
+    cl <- makeCluster(3, outfile="./stdout.log")
+    registerDoParallel(cl)
+    exportFuns<-c('scoreEloVar', 'calculateEloRatings', 'pResCalc', 'seasonBrierAdjScore', 'seasonBrierScore', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults')
+    scores<-foreach(i=1:40, .combine=rbind, .export=exportFuns, .packages = c('scoring', 'reshape2')) %:% foreach(j=0:9) %dopar% scoreEloVar(p=c(i, j/3), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
 
-    for(i in c(1:25)){
-        for (j in c(0:30)){
-            scores[i,j]<-scoreEloVar(p=c(i, j/10), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
-            message(paste0('Score: ', scores[i,j]))
-        }
-    }
-    rownames(scores)<-c(1:25)
-    colnames(scores)<-c(1:30)/10
+    stopCluster(cl)
+
     return(scores)
 }

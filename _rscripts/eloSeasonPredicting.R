@@ -104,13 +104,17 @@ predictRemainderOfSeason <- function(schedule, eloHist, pWin, pLoss) {
 simulateSeason <- function(schedule, past_results, eloHist, pWin, pLoss, n = 10000) {
     # simulates the (remainder of the) season n times, returning a standings table with the times each team finished at each position
     standings <- matrix(0, nrow = length(unique(schedule$Home)), ncol = length(unique(schedule$Home)))
+    past_results<-past_results[,c(1,2,3,4)]
     rownames(standings) <- sort(unique(schedule$Home))
     colnames(standings) <- c(1:ncol(standings))
+    pb<-txtProgressBar(min = 0, max = n, initial = 0)
     for (i in 1:n) {
         scores <- predictRemainderOfSeason(schedule, eloHist, pWin, pLoss)
         stats_table <- makeStatsTable(rbind(past_results, scores))
         standings <- buildStandingsTable(stats = stats_table, standings = standings)
+        setTxtProgressBar(pb,i)
     }
+    message("Simulation Completed")
     return(standings)
 }
 
@@ -174,25 +178,35 @@ new_mean <- function(mean, pop, new_val) {
 
 v_new_mean <- Vectorize(new_mean, c("mean", "new_val"))
 
-point_predict <- function(res, schedule, stats, past_results, n = 10000, maxgoal = 8, m = NULL) {
-    pp <- matrix(0, nrow = length(unique(stats$Team)), ncol = 6)
-    rownames(pp) <- sort(unique(stats$Team))
+point_predict <- function(schedule, past_results, eloHist, pWin, pLoss, n = 10000) {
+    pp <- matrix(0, nrow = length(unique(c(schedule$Home, past_results$Home))), ncol = 6)
     colnames(pp) <- c("Points", "Points_StDev", "Playoffs", "Playoffs_StDev", "Presidents", "Presidents_StDev")
+    cutoff<-list('West'=0, 'East'=0)
 
-    scores <- predictRemainderOfSeason(res = res, schedule = schedule, stats = stats, maxgoal = maxgoal, m = m)
+    past_results<-past_results[,c(1:4)]
+    schedule<-schedule[,c(1:4)]
+
+    scores <- predictRemainderOfSeason(schedule = schedule, eloHist = eloHist, pWin = pWin, pLoss=pLoss)
     stats_table <- makeStatsTable(rbind(past_results, scores))
     standings <- buildStandingsTable(stats_table)
+    rownames(pp) <- sort(stats_table$Team)
     pp[, "Points"] <- stats_table[order(stats_table$Team), ]$P
-    playoff_list <- c(rownames(getConferenceStandings(standings, "East")[1:8, ]), rownames(getConferenceStandings(standings, "West")[1:8, ]))
+    east<-rownames(getConferenceStandings(standings, "East"))
+    west<-rownames(getConferenceStandings(standings, "West"))
+    playoff_list <- c(east[c(1:8)], west[c(1:8)])
     pp[playoff_list, "Playoffs"] <- 1
     pp[names(which(standings[, "1"] == 1, arr.ind = TRUE)), "Presidents"] <- 1
+    cutoff$West<-stats_table[stats_table$Team == west[8], 'P']
+    cutoff$East<-stats_table[stats_table$Team == east[8], 'P']
 
     if (n == 2) {
-        scores <- predictRemainderOfSeason(res = res, schedule = schedule, stats = stats, maxgoal = maxgoal, m = m)
+        scores <- predictRemainderOfSeason(schedule = schedule, eloHist = eloHist, pWin = pWin, pLoss=pLoss)
         stats_table <- makeStatsTable(rbind(past_results, scores))
         stgs <- buildStandingsTable(stats_table)
         standings <- buildStandingsTable(stats = stats_table, standings = standings)
-        playoff_list <- c(rownames(getConferenceStandings(stgs, "East")[1:8, ]), rownames(getConferenceStandings(stgs, "West")[1:8, ]))
+        east<-rownames(getConferenceStandings(standings, "East"))
+        west<-rownames(getConferenceStandings(standings, "West"))
+        playoff_list <- c(east[c(1:8)], west[c(1:8)])
 
         pp[, "Points_StDev"] <- apply(cbind(pp[, "Points"], stats_table[order(stats_table$Team), ]$P), 1, sd)
         pp[, "Points"] <- apply(cbind(pp[, "Points"], stats_table[order(stats_table$Team), ]$P), 1, mean)
@@ -200,18 +214,27 @@ point_predict <- function(res, schedule, stats, past_results, n = 10000, maxgoal
         pp[, "Playoffs"] <- apply(cbind(pp[, "Playoffs"], rownames(pp) %in% playoff_list), 1, mean)
         pp[, "Presidents_StDev"] <- apply(cbind(pp[, "Presidents"], stgs[, "1"]), 1, sd)
         pp[, "Presidents"] <- apply(cbind(pp[, "Presidents"], stgs[, "1"]), 1, mean)
+
+        cutoff$West<-stats_table[stats_table$Team == west[8], 'P']
+        cutoff$East<-stats_table[stats_table$Team == east[8], 'P']
     } else if (n > 2) {
-        scores <- predictRemainderOfSeason(res = res, schedule = schedule, stats = stats, maxgoal = maxgoal, m = m)
+        scores <- predictRemainderOfSeason(schedule = schedule, eloHist = eloHist, pWin = pWin, pLoss=pLoss)
         stats_table <- makeStatsTable(rbind(past_results, scores))
         stgs <- buildStandingsTable(stats_table)
         standings <- buildStandingsTable(stats = stats_table, standings = standings)
-        playoff_list <- c(rownames(getConferenceStandings(stgs, "East")[1:8, ]), rownames(getConferenceStandings(stgs, "West")[1:8, ]))
 
-        scores2 <- predictRemainderOfSeason(res = res, schedule = schedule, stats = stats, maxgoal = maxgoal, m = m)
+        east<-rownames(getConferenceStandings(standings, "East"))
+        west<-rownames(getConferenceStandings(standings, "West"))
+        playoff_list <- c(east[c(1:8)], west[c(1:8)])
+
+        scores2 <- predictRemainderOfSeason(schedule = schedule, eloHist = eloHist, pWin = pWin, pLoss=pLoss)
         stats_table2 <- makeStatsTable(rbind(past_results, scores2))
         stgs2 <- buildStandingsTable(stats_table)
         standings <- buildStandingsTable(stats = stats_table, standings = standings)
-        playoff_list2 <- c(rownames(getConferenceStandings(stgs2, "East")[1:8, ]), rownames(getConferenceStandings(stgs2, "West")[1:8, ]))
+
+        east2<-rownames(getConferenceStandings(standings, "East"))
+        west2<-rownames(getConferenceStandings(standings, "West"))
+        playoff_list2 <- c(east2[c(1:8)], west2[c(1:8)])
 
         pp[, "Points_StDev"] <- apply(cbind(pp[, "Points"], stats_table[order(stats_table$Team), ]$P, stats_table2[order(stats_table2$Team), ]$P),
             1, sd)
@@ -220,13 +243,21 @@ point_predict <- function(res, schedule, stats, past_results, n = 10000, maxgoal
         pp[, "Playoffs"] <- apply(cbind(pp[, "Playoffs"], rownames(pp) %in% playoff_list, rownames(pp) %in% playoff_list2), 1, mean)
         pp[, "Presidents_StDev"] <- apply(cbind(pp[, "Presidents"], stgs[, "1"], stgs2[, "1"]), 1, sd)
         pp[, "Presidents"] <- apply(cbind(pp[, "Presidents"], stgs[, "1"], stgs2[, "1"]), 1, mean)
+
+        cutoff$West<-mean(c(cutoff$West, stats_table[stats_table$Team == west[8], 'P'], stats_table[stats_table$Team == west2[8], 'P']))
+        cutoff$East<-mean(c(cutoff$East, stats_table[stats_table$Team == east[8], 'P'], stats_table[stats_table$Team == east2[8], 'P']))
+
         if (n > 3) {
+            pb<-txtProgressBar(min = 0, max = n, initial = 3)
             for (i in 4:n) {
-                scores <- predictRemainderOfSeason(res = res, schedule = schedule, stats = stats, maxgoal = maxgoal, m = m)
+                scores <- predictRemainderOfSeason(schedule = schedule, eloHist = eloHist, pWin = pWin, pLoss=pLoss)
                 stats_table <- makeStatsTable(rbind(past_results, scores))
                 standings <- buildStandingsTable(stats = stats_table, standings = standings)
                 stgs <- buildStandingsTable(stats_table)
-                playoff_list <- c(rownames(getConferenceStandings(stgs, "East")[1:8, ]), rownames(getConferenceStandings(stgs, "West")[1:8, ]))
+
+                east<-rownames(getConferenceStandings(standings, "East"))
+                west<-rownames(getConferenceStandings(standings, "West"))
+                playoff_list <- c(east[c(1:8)], west[c(1:8)])
 
                 pp[, "Points_StDev"] <- v_new_stdev(pp[, "Points_StDev"], pp[, "Points"], i - 1, stats_table[order(stats_table$Team), ]$P)
                 pp[, "Points"] <- v_new_mean(pp[, "Points"], i - 1, stats_table[order(stats_table$Team), ]$P)
@@ -234,9 +265,33 @@ point_predict <- function(res, schedule, stats, past_results, n = 10000, maxgoal
                 pp[, "Playoffs"] <- v_new_mean(pp[, "Playoffs"], i - 1, rownames(pp) %in% playoff_list)
                 pp[, "Presidents_StDev"] <- v_new_stdev(pp[, "Presidents_StDev"], pp[, "Presidents"], i - 1, stgs[, "1"])
                 pp[, "Presidents"] <- v_new_mean(pp[, "Presidents"], i - 1, stgs[, "1"])
+
+                ppoints<-stats_table[order(stats_table$Team), ]$P
+                cutoff$West<-new_mean(cutoff$West, i-1, stats_table[stats_table$Team == west[8], 'P'])
+                cutoff$East<-new_mean(cutoff$East, i-1, stats_table[stats_table$Team == east[8], 'P'])
+
+                setTxtProgressBar(pb, i)
             }
         }
     }
-    return(list(standings, pp))
+    return(list('Standings'=standings, 'PlayoffPresident'=pp, 'Cutoffs'=cutoff))
 }
 
+generatePredictionsYTD<-function(eloHist, schedule, pWin, pLoss, n=10000){
+    schedule_played<-schedule[!is.na(schedule$Result), ]
+    schedule_future<-schedule[is.na(schedule$Result), ]
+    schedule_empty<-schedule[,c(1:4)]
+    schedule_empty$Result<-NA
+
+    gamedays<-unique(schedule_played$Date)
+    resultsHistory<-NA
+
+    for(i in 1:length(gamedays)){
+        message(paste0('Day ', i, ' of ', length(gamedays), ', ', gamedays[i]))
+        elo<-eloHist[eloHist$Date <= gamedays[i]-1,  ]
+        sched<-schedule_empty[schedule_empty$Date >= gamedays[i], ]
+        pastr<-schedule_played[schedule_played$Date < gamedays[i], c(1:4)]
+        resultsHistory<-c(resultsHistory, point_predict(schedule=sched, past_results = pastr, eloHist = elo, pWin=pWin, pLoss=pLoss, n=n))
+    }
+    return(resultsHistory)
+}
