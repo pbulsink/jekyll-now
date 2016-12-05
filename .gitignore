@@ -17,3 +17,4 @@ nhlr-data
 cache/*
 
 _data/NHL.MinuteData.csv
+stdout.log

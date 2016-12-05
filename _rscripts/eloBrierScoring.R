@@ -4,6 +4,7 @@ require(scoring)
 require(reshape2)
 require(optimx)
 require(doParallel)
+require(MLmetrics)
 
 #' Calculates and returns brier score
 #'
@@ -87,6 +88,16 @@ seasonBrierAdjScore<-function(eloHist, schedule, pWin, pLoss){
     return(sum(calcscore(results~predicted$VWin+predicted$D+predicted$HWin, bounds=c(0,1)))/nrow(predicted))
 }
 
+seasonLogLossScore<-function(eloHist, schedule, pWin, pLoss){
+    pr<-getPredictedResults(eloHist, schedule, pWin, pLoss)
+    predicted<-pr$predicted
+    results<-pr$results
+    results[results == 1]<-'VWin'
+    results[results == 3]<-'D'    
+    results[results == 3]<-'HWin'
+    return(MultiLogLoss(y_true=results, y_pred=predicted))
+}
+
 scoreEloVar<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data){
     #Calculate Elo by parameter
     kPrime=p[1]
@@ -113,19 +124,39 @@ scoreEloVar<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0
 
 }
 
+logLossScoreEloVar<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data){
+    #Calculate Elo by parameter
+    kPrime=p[1]
+    gammaK=p[2]
+    #regressStrength=p[3]
+    #homeAdv=p[4]
+    #newTeam=1500-4*p[5] # Thus, as p5 goes up, newteam ratings go down. Typically p[5] = 50, newTeam=1300
+    message(paste0("Calculating Elo with kPrime=",kPrime," gammaK=",gammaK," newTeam=",newTeam," regStrength=",regressStrength," homeAdv=",homeAdv))
+    elo<-calculateEloRatings(nhl_data, k=kPrime, gammaK = gammaK, new_teams = newTeam, regress_strength = regressStrength, home_adv = homeAdv, k_var = TRUE, meta=FALSE)
+    
+    #Calculate pWin, pLoss
+    message("Calculating pWin, pLoss")
+    pResults<-pResCalc(elo$Ratings, nhl_data)
+    pWin<-pResults$pWin
+    pLoss<-pResults$pLoss
+    pw<-predict(pWin, data.frame("EloDiff"=0), type='response')
+    message(paste0('pWin at even: ', pw))
+    
+    #Calculate LogLoss Score
+    message("Calculating Brier Score")
+    elo16<-elo$Ratings[(elo$Ratings$Date>as.Date("2015-08-01") & elo$Ratings$Date<as.Date("2016-08-01")),]
+    nhl16<-nhl_data[(nhl_data$Date > as.Date("2015-08-01") & nhl_data$Date < as.Date("2016-08-01")),]
+    return(seasonLogLossScore(elo16, schedule = nhl16, pWin, pLoss))
+}
+
 optEloVar<-function(nhl_data){
     return(optim(par=c(10, 1), fn=scoreEloVar, nhl_data=nhl_data))  #, lower=0, upper=100))
 }
 
-scoreEloVar2<-function(p=c('kPrime'=10, 'gammaK'=1, 'regressStrength'=3, 'homeAdv'=0, 'newTeam'=1300), nhl_data){
+scoreEloVar2<-function(kPrime=10, regressStrength=3, homeAdv=0, newTeam=1300, nhl_data){
     #Calculate Elo by parameter
-    kPrime=p[1]
-    gammaK=p[2]
-    regressStrength=p[3]
-    homeAdv=p[4]
-    newTeam=1500-4*p[5] # Thus, as p5 goes up, newteam ratings go down. Typically p[5] = 50, newTeam=1300
-    message(paste0("Calculating Elo with kPrime=",kPrime," gammaK=",gammaK," newTeam=",newTeam," regStrength=",regressStrength," homeAdv=",homeAdv))
-    elo<-calculateEloRatings(nhl_data, k=kPrime, gammaK = gammaK, new_teams = newTeam, regress_strength = regressStrength, home_adv = homeAdv, k_var = TRUE, meta=FALSE)
+    message(paste0("Calculating Elo with kPrime=",kPrime," newTeam=",newTeam," regStrength=",regressStrength," homeAdv=",homeAdv))
+    elo<-calculateEloRatings(nhl_data, k=kPrime, new_teams = newTeam, regress_strength = regressStrength, home_adv = homeAdv, meta=FALSE)
 
     #Calculate pWin, pLoss
     message("Calculating pWin, pLoss")
@@ -193,8 +224,8 @@ pResCalc<-function(elo, nhl_data){
 eloVarPlotData<-function(nhl_data){
     cl <- makeCluster(3, outfile="./stdout.log")
     registerDoParallel(cl)
-    exportFuns<-c('scoreEloVar', 'calculateEloRatings', 'pResCalc', 'seasonBrierAdjScore', 'seasonBrierScore', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults')
-    scores<-foreach(i=1:40, .combine=rbind, .export=exportFuns, .packages = c('scoring', 'reshape2')) %:% foreach(j=0:9) %dopar% scoreEloVar(p=c(i, j/3), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
+    exportFuns<-c('scoreEloVar2', 'calculateEloRatings', 'pResCalc', 'seasonBrierAdjScore', 'seasonBrierScore', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults')
+    scores<-foreach(i=1:150, .export=exportFuns, .packages = c('scoring', 'reshape2')) %dopar% scoreEloVar2(k=i, regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
 
     stopCluster(cl)
 

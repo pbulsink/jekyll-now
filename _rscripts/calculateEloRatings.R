@@ -34,7 +34,7 @@ calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_v
         ratings_history <- data.frame("Date"=as.Date(schedule[1,"Date"] -1))
     }
 
-    stopifnot(is.numeric(k), k >= 0, k < 100)
+    #stopifnot(is.numeric(k), k >= 0, k < 100)
     stopifnot(is.numeric(mean_value))
     stopifnot(is.numeric(new_teams))
     stopifnot(is.numeric(gammaK))
