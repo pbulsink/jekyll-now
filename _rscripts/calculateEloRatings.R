@@ -14,7 +14,7 @@
 #' @examples
 #' calculateEloRatings(nhl20102011)
 #' calculateEloRatings(nhl20152016, ratings_history=hist_elo, k=10, mean_value=1505, new_teams=1350)
-calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_value = 1500, new_teams = 1300, meta = TRUE, regress_strength=3, home_adv=35, k_var=FALSE, gammaK=1) {
+calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_value = 1500, new_teams = 1300, meta = TRUE, regress_strength=3, home_adv=35, k_var=FALSE, gammaK=1, simple=FALSE) {
     # Ensuring Opts are ok.
     if (!k_var){
         stopifnot(ncol(schedule) == 4, nrow(schedule) > 0)
@@ -32,6 +32,11 @@ calculateEloRatings <- function(schedule, ratings_history = NULL, k = 20, mean_v
 
     if (is.null(ratings_history)) {
         ratings_history <- data.frame("Date"=as.Date(schedule[1,"Date"] -1))
+    }
+    
+    if(simple){
+        schedule$Result[schedule$Result < 0.5]<-0
+        schedule$Result[schedule$Result > 0.5]<-1
     }
 
     #stopifnot(is.numeric(k), k >= 0, k < 100)
