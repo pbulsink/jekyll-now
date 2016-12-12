@@ -127,13 +127,13 @@ seasonScore<-function(eloHist, schedule, pResults){
     res[results >= 4]<-1
     binLL<-LogLoss(y_true=res, y_pred=pre)
     binBrier<-sum(unlist(brierscore(res~pre)))/length(pre)
-    percentRight<-sum(res[res==1 & pre > 0.5])/length(res)
+    percentBin<-sum(c(res[res==1 & pre > 0.5]), res[res==0 & pre < 0.5])/length(res)
     
     detach(pResults)
     return(data.frame('multiBrier6'=multiBrier6, 'multiLL6'=multiLL6, 
                 'multiBrierWinDraw'=multiBrierWinDraw, 'multiLLWinDraw'=multiLLWinDraw, 
                 'multiBrierWinOTDraw'=multiBrierWinOTDraw, 'multiLLWinOTDraw'=multiLLWinOTDraw,
-                'binBrier'=binBrier, 'binLL'=binLL, 'percentRight'=percentRight))
+                'binBrier'=binBrier, 'binLL'=binLL, 'percentBin'=percentBin))
 }
 
 scoreEloVar<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data){
@@ -238,7 +238,8 @@ pResCalc<-function(elo, nhl_data){
     pWin2<-glm(cbind(OTSOWin, nOTSOWin)~EloDiff, data = propresults, family = binomial('logit'))
     pLoss4<-glm(cbind(OTLoss, nOTLoss)~EloDiff, data = propresults, family = binomial('logit'))
     pLoss2<-glm(cbind(OTSOLoss, nOTSOLoss)~EloDiff, data = propresults, family = binomial('logit'))
-    return(list('pWin6'=pWin6, 'pLoss6'=pLoss6, 'pWin4'=pWin4, 'pLoss4'=pLoss4, 'pWin2'=pWin2, 'pLoss2'=pLoss2, 
+    return(list('pWin6'=pWin6, 'pLoss6'=pLoss6, 'pWin4'=pWin4, 'pLoss4'=pLoss4, 'pWin2'=pWin2, 'pLoss2'=pLoss2#, 
+                #'pWinOT6'=pWinOT6, 'pLossOT6'=pLossOT6, 'pWinSO6'=pWinSO6, 'pLossSO6'=pLossSO6, 'pDrawSO'=pDrawSO, 'pDrawOT'=pDrawOT,
                 ))
 }
 
