@@ -1,0 +1,17 @@
+---
+title: "Optimizing Elo Parameters"
+author: "Philip Bulsink"
+date: "December 12, 2016"
+status: process
+published: false
+layout: post
+excerpt_separator: <!--more-->
+tags: R hockey Rating Elo plots 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In the past few weeks, I've been optimizing parameters for Elo based predicting of NHL data. 
+
