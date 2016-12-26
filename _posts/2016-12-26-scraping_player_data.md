@@ -47,7 +47,7 @@ We want to pull out three items. We want the `class` value, the part url (from `
 Regex is hard, yes, but it is also very powerful. We're not trying to do anything crazy or worried about maximum efficiency, so we can develop a pattern to match against quite easily. Let's take another look at what we want:
  
 ```html
-<p class="[NHL or Not?]"><a href="[Player URL]">[Player Name]</a>
+<p class="[NHL or Not?]">[Maybe <strong>]<a href="[Player URL]">[Player Name]</a>[Maybe </strong>] ([Active Year(s)])
 ```
  
 That right there is the basis for the regex. Regex will match against exact characters, like `<p class="` or against ranges of characters, like `[a-z]`. We can set fields to capture portions of a match. We can collect 1, or more, or a specific number of wildcards. There is a limitless range of what you can do, for more practice and help building your regex I'd recommend [regexr.com](regexr.com).
@@ -55,23 +55,24 @@ That right there is the basis for the regex. Regex will match against exact char
 At the end of playing with regex patterns, you'll find that this works well:
 
 {% highlight r %}
-pattern='<p class="([a-z\\_]+)"><a href="(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)">([a-zA-Z ]+)<\\/a>'
+    pattern<-'<p class="([a-z\\_]+)">(?:<strong>)*<a href="(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)">([a-zA-Z ]+)<\\/a>(?:<\\/strong>)*\\s*\\(([0-9-]+)*'
 {% endhighlight %}
  
-The `<p class="` and other parts help the string matching to line up with only the info that we want to collect. WE don't want to find links to elsewhere on the site, nor other random information that may be a html class. 
+The `<p class="` and other parts help the string matching to line up with only the info that we want to collect. We don't want to find links to elsewhere on the site, nor other random information that may be a html class. 
  
-For our example, you see that we collect class with `([a-z\\_]+)`. This means 'capture a group of one or more letters or an underscore'. Note that to properly excape the undescore (and other special characters), we need to use a double `\\`, instead of the traditional single `\`. 
+For our example, you see that we collect class with `([a-z\\_]+)`. This means 'capture a group of one or more letters or an underscore'. Note that to properly excape the undescore (and other special characters), we need to use a double `\\`, instead of the traditional single `\`. Sometimes this is followed by `<strong>` so we put in an optional group: `(?:<strong>)*`
  
 Similarly, we want to collect the URL, but we know what part of it will look like, so we use `(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)`. This would match `\players\a\aaltoan01.html` but not `\player\a\a\aaltoan01.html`. Having our known characters fixed in the regex will help prevent false positives. 
  
-Finally, to collect the name, we use `([a-xA-Z ]+)`. We could have used a whitespace character, but I only wanted spaces (not tabs or any others) so a space was chosen. 
+To collect the name, we use `([a-xA-Z ]+)`. We could have used a whitespace character, but I only wanted spaces (not tabs or any others) so a space was chosen. Similarly, after other optionals, we use `[0-9-]` to get the active years.
  
 Once we know our pattern, we can use it with our for loop to collect names. I'll put these in a function with some data tidying commands as well. Remember, when scraping, it's polite to leave time between each URL request, to not overload the server, so that's baked in as well.
  
 
 {% highlight r %}
 getPlayerList<-function(sleep=30){
-    pattern<-'<p class="([a-z\\_]+)"><a href="(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)">([a-zA-Z ]+)<\\/a>'
+    pattern<-'<p class="([a-z\\_]+)">(?:<strong>)*<a href="(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)">([a-zA-Z ]+)<\\/a>(?:<\\/strong>)*\\s*\\(([0-9-]+)*'
+ 
     player_list<-data.frame(Complete=character(), BlnNHL=character(), URL=character(), Name=character())
     for(letter in letters){
         message(letter)
@@ -79,7 +80,7 @@ getPlayerList<-function(sleep=30){
         raw_player_list<-getURL(url)
         pl<-str_match_all(raw_player_list, pattern)
         pl<-as.data.frame(pl[1], stringsAsFactors = FALSE)
-        colnames(pl)<-c('Complete', 'BlnNHL', 'URL', 'Name')
+        colnames(pl)<-c('Complete', 'BlnNHL', 'URL', 'Name', 'Active')
         player_list<-rbind(player_list, pl)
         Sys.sleep(sleep)
     }
@@ -101,81 +102,48 @@ head(player_list)
 
 
 {% highlight text %}
-##                                                                        Complete
-## 1            <p class="nhl"><a href="/players/a/aaltoan01.html">Antti Aalto</a>
-## 2 <p class="non_nhl"><a href="/players/a/aaltoju01.html">Juhamatti Aaltonen</a>
-## 3      <p class="non_nhl"><a href="/players/a/aaltomi01.html">Miro Aaltonen</a>
-## 4        <p class="non_nhl"><a href="/players/a/abbeybr01.html">Bruce Abbey</a>
-## 5          <p class="nhl"><a href="/players/a/abbotge01.html">George Abbott</a>
-## 6             <p class="nhl"><a href="/players/a/abbotre01.html">Reg Abbott</a>
-##   BlnNHL                       URL               Name
-## 1   TRUE /players/a/aaltoan01.html        Antti Aalto
-## 2  FALSE /players/a/aaltoju01.html Juhamatti Aaltonen
-## 3  FALSE /players/a/aaltomi01.html      Miro Aaltonen
-## 4  FALSE /players/a/abbeybr01.html        Bruce Abbey
-## 5   TRUE /players/a/abbotge01.html      George Abbott
-## 6   TRUE /players/a/abbotre01.html         Reg Abbott
+##                                                                          Complete
+## 1   <p class="nhl"><a href="/players/a/aaltoan01.html">Antti Aalto</a> (1998-2001
+## 2 <p class="non_nhl"><a href="/players/a/aaltoju01.html">Juhamatti Aaltonen</a> (
+## 3      <p class="non_nhl"><a href="/players/a/aaltomi01.html">Miro Aaltonen</a> (
+## 4        <p class="non_nhl"><a href="/players/a/abbeybr01.html">Bruce Abbey</a> (
+## 5 <p class="nhl"><a href="/players/a/abbotge01.html">George Abbott</a> (1944-1944
+## 6    <p class="nhl"><a href="/players/a/abbotre01.html">Reg Abbott</a> (1953-1953
+##   BlnNHL                       URL               Name    Active
+## 1   TRUE /players/a/aaltoan01.html        Antti Aalto 1998-2001
+## 2  FALSE /players/a/aaltoju01.html Juhamatti Aaltonen          
+## 3  FALSE /players/a/aaltomi01.html      Miro Aaltonen          
+## 4  FALSE /players/a/abbeybr01.html        Bruce Abbey          
+## 5   TRUE /players/a/abbotge01.html      George Abbott 1944-1944
+## 6   TRUE /players/a/abbotre01.html         Reg Abbott 1953-1953
 {% endhighlight %}
  
 We have the complete string match, plus a column of whether they played in the NHL (or are just listed), what their player URL is, and their name. Interestingly, there's been a few people with the same name:
 
 {% highlight r %}
-summary(as.factor(player_list$Name))
+player_list$Name<-as.factor(player_list$Name)
+summary(player_list)
 {% endhighlight %}
 
 
 
 {% highlight text %}
-##        John Adams        Mike Brown   Peter Andersson      Sean Collins 
-##                 3                 3                 3                 3 
-##        Ab DeMarco        Ace Bailey        Alain Cote  Alexandre Picard 
-##                 2                 2                 2                 2 
-##     Andy Bathgate    Andy Schneider     Bill McCreary      Billy Harris 
-##                 2                 2                 2                 2 
-##      Billy Taylor         Bob Kelly       Bob Murdoch        Bob Murray 
-##                 2                 2                 2                 2 
-##      Brent Hughes    Brent Peterson     Brian Bradley     Brian Gibbons 
-##                 2                 2                 2                 2 
-##       Brian Smith     Bryan Hextall     Claude Larose       Colin White 
-##                 2                 2                 2                 2 
-##  Conner Bleackley     Cory Stillman         Dave Reid      David Jensen 
-##                 2                 2                 2                 2 
-##       Derek Smith         Don Smith   Earl Ingarfield   Erik Gustafsson 
-##                 2                 2                 2                 2 
-##        Greg Adams      Harry Watson    Harvey Bennett Henrik Samuelsson 
-##                 2                 2                 2                 2 
-##       Jack Gibson     Jack McDonald       Jack McGill     Jacques Locas 
-##                 2                 2                 2                 2 
-##       Jason Smith       Jim Johnson      Jim McKenzie      Jimmy Peters 
-##                 2                 2                 2                 2 
-##        Joe Cooper         Joe Matte       John Carter      John Stewart 
-##                 2                 2                 2                 2 
-##   Jonas Johansson       Juraj Mikus         Ken Hodge Konstantin Volkov 
-##                 2                 2                 2                 2 
-##       Lee Fogolin         Leo Reise   Michel Larocque       Mike Boland 
-##                 2                 2                 2                 2 
-##      Mike McMahon       Mike Murphy       Mike Peluso     Mike Rucinski 
-##                 2                 2                 2                 2 
-##      Mike Stevens     Mike Sullivan        Mike Walsh    Mikko Lehtonen 
-##                 2                 2                 2                 2 
-##       Milan Kraft    Neil Komadoski        Paul Evans      Petr Svoboda 
-##                 2                 2                 2                 2 
-##       Petr Sykora      Ron Anderson        Ron Wilson        Ryan Jones 
-##                 2                 2                 2                 2 
-##   Stephane Richer       Steve Smith         Stu Smith          Syl Apps 
-##                 2                 2                 2                 2 
-##        Terry Ryan        Tom Martin      Tom McCarthy  Vladimir Ruzicka 
-##                 2                 2                 2                 2 
-##    Aapeli Rasanen    Aaron Boogaard      Aaron Broten      Aaron Dawson 
-##                 1                 1                 1                 1 
-##      Aaron Downey      Aaron Gagnon       Aaron Gavey     Aaron Harstad 
-##                 1                 1                 1                 1 
-##      Aaron Haydon      Aaron Irving     Aaron Johnson        Aaron Lobb 
-##                 1                 1                 1                 1 
-##   Aaron MacKenzie      Aaron Marvin      Aaron Miller        Aaron Ness 
-##                 1                 1                 1                 1 
-##    Aaron Palushaj        Aaron Rome        Aaron Snow           (Other) 
-##                 1                 1                 1              9072
+##    Complete           BlnNHL         URL           
+##  Length:10083       FALSE:2724   Length:10083      
+##  Class :character   TRUE :7359   Class :character  
+##  Mode  :character                Mode  :character  
+##                                                    
+##                                                    
+##                                                    
+##                                                    
+##               Name          Active         
+##  John Adams     :    3   Length:10083      
+##  Mike Brown     :    3   Class :character  
+##  Peter Andersson:    3   Mode  :character  
+##  Sean Collins   :    3                     
+##  Ab DeMarco     :    2                     
+##  Ace Bailey     :    2                     
+##  (Other)        :10067
 {% endhighlight %}
  
 With this, we can start building a scraper for the detailed player data. 

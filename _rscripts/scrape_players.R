@@ -1,25 +1,10 @@
-library(RCurl)
-library(XML)
-library(stringr)
-library(plyr)
-
-#Remove comments hiding tables:
-#url<-'http://www.hockey-reference.com/players/a/abdelju01.html'
-#htmlpage<-getURL(url)
-#htmlpage<-gsub(htmlpage, pattern = '<!--', replacement = '')
-#htmlpage<-gsub(htmlpage, pattern = '-->', replacement = '')
-
-#Read in Tables
-#tables<-readHTMLTable(htmlpage)
-
-#Get List of all Players
-#url<-'http://www.hockey-reference.com/players/a/'
-#raw_player_list<-getURL(url)
-
-pattern<-'<p class="([a-z\\_]+)"><a href="(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)">([a-zA-Z ]+)<\\/a>'
-#player_list<-str_match_all(raw_player_list, pattern)
+require(RCurl)
+require(XML)
+require(stringr)
+require(plyr)
 
 getPlayerList<-function(sleep=30){
+    pattern<-'<p class="([a-z\\_]+)">(?:<strong>)*<a href="(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)">([a-zA-Z ]+)<\\/a>(?:<\\/strong>)*\\s*\\(([0-9-]+)*'
     player_list<-data.frame(Complete=character(), BlnNHL=character(), URL=character(), Name=character())
     for(letter in letters){
         message(letter)
@@ -27,7 +12,7 @@ getPlayerList<-function(sleep=30){
         raw_player_list<-getURL(url)
         pl<-str_match_all(raw_player_list, pattern)
         pl<-as.data.frame(pl[1], stringsAsFactors = FALSE)
-        colnames(pl)<-c('Complete', 'BlnNHL', 'URL', 'Name')
+        colnames(pl)<-c('Complete', 'BlnNHL', 'URL', 'Name', 'Active')
         player_list<-rbind(player_list, pl)
         Sys.sleep(sleep)
     }
@@ -47,15 +32,19 @@ getPlayerTables<-function(url){
     tables<-readHTMLTable(htmlpage)
 
     message('metas')
-    m1<-'<p><strong>Position<\\/strong>:\\s*([A-Z\\/]+)\\&.+<strong>(?:Shoots|Catches)<\\/strong>:\\s*([A-Za-z\\/]+)\\s*<\\/p>'
-    meta_pos_shot<-str_match(htmlpage, m1)[,c(2:3)]
-    names(meta_pos_shot)<-c("Position", "Shoots")
+    m1<-'<p><strong>Position<\\/strong>:\\s*([A-Z\\/]+)\\&'
+    meta_pos<-str_match(htmlpage, m1)[,2]
+    names(meta_pos)<-"Position"
+
+    m1b<-'<strong>(?:Shoots|Catches)<\\/strong>:\\s*([A-Za-z\\/]+)\\s*'
+    meta_hand<-str_match(htmlpage, m1b)[,2]
+    names(meta_hand)<-'Handed'
 
     m2<-'<p><span itemprop="height">([0-9-]+)<\\/span>.+itemprop="weight">([0-9]+)lb.+\\(([0-9]+)cm,.+;([0-9]+)kg\\).<\\/p>'
     meta_h_w<-str_match(htmlpage, m2)[,c(2:5)]
     names(meta_h_w)<-c("HeightImp", "WeightImp", "HeightMetric", "WeightMetric")
 
-    m3<-'data-birth="([0-9-]*)"+>.+"birthPlace">\\s*in\\&nbsp;([A-Za-z]*),.+country=([A-Za-z]*)&.+province=([A-Za-z]*)&.+state=([A-Za-z]*)"'
+    m3<-'data-birth="([0-9-]*)"+>.+"birthPlace">\\s*in\\&nbsp;([A-Za-z]*),.+country=([A-Za-z]*).+province=([A-Za-z]*).+state=([A-Za-z]*)"'
     meta_birth<-str_match(htmlpage, m3)[2:6]
     names(meta_birth)<-c("Birthdate", "BirthPlace", "Country", "Province", "State")
 
@@ -71,7 +60,7 @@ getPlayerTables<-function(url){
     meta_draft<-tail(meta_draft, 4)
     names(meta_draft)<-c("DraftTeam", "DraftRound", "DraftOverall", "DraftYear")
 
-    metas<-unlist(list(meta_pos_shot, meta_h_w, meta_birth, meta_death, meta_draft))
+    metas<-unlist(list(meta_pos, meta_hand, meta_h_w, meta_birth, meta_death, meta_draft))
 
     return(list(tables, metas))
 }
@@ -157,15 +146,25 @@ getPlayerStats<-function(player_list, sleep=30){
     player_meta_tables<-data.frame()
     plist<-player_list[player_list$BlnNHL == TRUE, ]
     for(player in c(1:nrow(plist))){
-        message(plist[player, 'Name'])
+
         #prep HTML
         url<-paste0('http://www.hockey-reference.com', plist[player, 'URL'])
+
+        pname<-plist[player, 'Name']
+        if('02.html' %in% url){
+            pname<-paste(pname, "02")
+        }
+        else if('03.html' %in% url){
+            pname<-paste(pname, "03")
+        }
+        message(pname)
 
         scrape<-getPlayerTables(url)
         #Add to record
 
         message('stats')
         tables<-flattenTables(scrape[[1]])
+        tables$Name<-pname
 
         if("G" %in% scrape[[2]]['Position']){
             message('goalie')
@@ -175,9 +174,7 @@ getPlayerStats<-function(player_list, sleep=30){
             message('player')
             player_stats_tables<-rbind.fill(player_stats_tables, tables)
         }
-        player_meta_tables<-rbind.fill(player_meta_tables, data.frame("Name"=plist[player, 'Name'], t(unlist(scrape[[2]]))))
-
-        tables$Name<-plist[player, 'Name']
+        player_meta_tables<-rbind.fill(player_meta_tables, data.frame("Name"=pname, "Active"=plist[player, 'Active'], t(unlist(scrape[[2]]))))
 
 
         message('sleep')
@@ -185,16 +182,4 @@ getPlayerStats<-function(player_list, sleep=30){
     }
     return(list("PlayerStats"=player_stats_tables, "GoalieStats"=goalie_stats_tables, "PlayerMeta"=player_meta_tables))
 }
-#
-# pt<-data.frame('Name'=player_list$Name)
-# pt$nhl_season_stats<-addIf('stats_basic_nhl', tables)
-# if(is.na(pt$nhl_season_stats)){
-#     pt$nhl_season_stats<-addIf('stats_basic_plus_nhl', tables)
-# }
-# pt$nhl_playoff_stats<-addIf('stats_playoffs_nhl', tables)
-# pt$other_season_stats<-addIf('stats_basic_other', tables)
-# pt$other_playoff_stats<-addIf('stats_playoffs_other', tables)
-# pt$advanced_stats<-addIf('skaters_advanced', tables)
-# pt$misc_nhl_stats<-addIf('stats_misc_nhl', tables)
-#
-# player_tables<-rbind(player_tables, pt)
+
