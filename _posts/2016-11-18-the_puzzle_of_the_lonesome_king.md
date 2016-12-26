@@ -20,7 +20,9 @@ The childless King of Solitaria lives alone in his castle. Overly lonely, the ki
 The winner is chosen through the following game. In the first round, every subject simultaneously chooses a random other subject on the green. (It's possible, of course, that some subjects will be chosen by more than one other subject.) Everybody chosen is eliminated. (Not killed or anything, just sent back to their hovels.) In each successive round, the subjects who are still in contention simultaneously choose a random remaining subject, and again everybody chosen is eliminated. If there is eventually exactly one subject remaining at the end of a round, he or she wins and heads straight to the castle for f?ting. However, it's also possible that everybody could be eliminated in the last round, in which case nobody wins and the king remains alone. If the kingdom has a population of 56,000 (not including the king), is it more likely that a prince or princess will be crowned or that nobody will win?
  
 Extra credit: How does the answer change for a kingdom of arbitrary size?
- 
+
+<!--more-->
+
 ##My Answer##
  
 This is a problem easily solved by simulation.

@@ -1,0 +1,142 @@
+---
+title: "Scraping Player Data"
+author: "Philip Bulsink"
+date: "December 26, 2016"
+status: publish
+published: true
+layout: post
+excerpt_separator: <!--more-->
+tags: R hockey scraping  
+---
+ 
+
+ 
+[Hockey-Reference.com](http://hockey-reference.com) is a wonderful tool, with hoards of data to be played with. We've used their great site for scraping score data (see [this post](https://pbulsink.github.io/blog/2016-07-28/Getting-Data-Part-One.html)), but there is a full stats breakdown of every player who has ever played in or been drafted to the NHL on their site as well. 
+ 
+We'll see this post how to write a scraper to collect that data for future use. 
+ 
+<!--more-->
+ 
+We'll need to start by getting a list of every player in their site. They've broken the list of links up by the first letter of the last name. We can write a simple for loop to visit each page by creating the url with `paste0`:
+
+{% highlight r %}
+for (letter in letters){
+    url<-paste0('http://www.hockey-reference.com/players/', letter, '/')
+    
+    #Collect the data
+}
+{% endhighlight %}
+ 
+Once we get the url, we need to download the page so that we can do the string parsing. We'll use the simple `getURL` from  the `RCurl` package. When we do that, we'll have html similar to this:
+ 
+```html
+<!--...-->
+<p class="nhl"><a href="/players/a/aaltoan01.html">Antti Aalto</a> (1998-2001, C)</p>
+<p class="non_nhl"><a href="/players/a/aaltoju01.html">Juhamatti Aaltonen</a> (RW)</p>
+<p class="non_nhl"><a href="/players/a/aaltomi01.html">Miro Aaltonen</a> (C)</p>
+<p class="non_nhl"><a href="/players/a/abbeybr01.html">Bruce Abbey</a> (D)</p>
+<p class="nhl"><a href="/players/a/abbotge01.html">George Abbott</a> (1944-1944, G)</p>
+<p class="nhl"><a href="/players/a/abbotre01.html">Reg Abbott</a> (1953-1953, C)</p>
+<p class="nhl"><a href="/players/a/abbotsp01.html">Spencer Abbott</a> (2014-2014, LW)</p>
+<p class="nhl"><strong><a href="/players/a/abdelju01.html">Justin Abdelkader</a></strong> (2008-2017, LW)</p>
+<!--...-->
+```
+ 
+We want to pull out three items. We want the `class` value, the part url (from `<a href=`), and their name. The simplest way to process text like this and extract values is with the `str_match_all` function from the `stringr` package, which uses regex string matching. 
+ 
+Regex is hard, yes, but it is also very powerful. We're not trying to do anything crazy or worried about maximum efficiency, so we can develop a pattern to match against quite easily. Let's take another look at what we want:
+ 
+```html
+<p class="[NHL or Not?]"><a href="[Player URL]">[Player Name]</a>
+```
+ 
+That right there is the basis for the regex. Regex will match against exact characters, like `<p class="` or against ranges of characters, like `[a-z]`. We can set fields to capture portions of a match. We can collect 1, or more, or a specific number of wildcards. There is a limitless range of what you can do, for more practice and help building your regex I'd recommend [regexr.com](regexr.com).
+ 
+At the end of playing with regex patterns, you'll find that this works well:
+
+{% highlight r %}
+pattern='<p class="([a-z\\_]+)"><a href="(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)">([a-zA-Z ]+)<\\/a>'
+{% endhighlight %}
+ 
+The `<p class="` and other parts help the string matching to line up with only the info that we want to collect. WE don't want to find links to elsewhere on the site, nor other random information that may be a html class. 
+ 
+For our example, you see that we collect class with `([a-z\\_]+)`. This means 'capture a group of one or more letters or an underscore'. Note that to properly excape the undescore (and other special characters), we need to use a double `//`, instead of the traditional single `/`. 
+ 
+Similarly, we want to collect the URL, but we know what part of it will look like, so we use `(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)`. This would match `\players\a\aaltoan01.html` but not `\player\a\a\aaltoan01.html`. Having our known characters fixed in the regex will help prevent false positives. 
+ 
+Finally, to collect the name, we use `([a-xA-Z ]+)`. We could have used a whitespace character, but I only wanted spaces (not tabs or any others) so a space was chosen. 
+ 
+Once we know our pattern, we can use it with our for loop to collect names. I'll put these in a function with some data tidying commands as well. Remember, when scraping, it's polite to leave time between each URL request, to not overload the server, so that's baked in as well.
+ 
+
+{% highlight r %}
+getPlayerList<-function(sleep=30){
+    pattern<-'<p class="([a-z\\_]+)"><a href="(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)">([a-zA-Z ]+)<\\/a>'
+    player_list<-data.frame(Complete=character(), BlnNHL=character(), URL=character(), Name=character())
+    for(letter in letters){
+        message(letter)
+        url<-paste0('http://www.hockey-reference.com/players/', letter, '/')
+        raw_player_list<-getURL(url)
+        pl<-str_match_all(raw_player_list, pattern)
+        pl<-as.data.frame(pl[1], stringsAsFactors = FALSE)
+        colnames(pl)<-c('Complete', 'BlnNHL', 'URL', 'Name')
+        player_list<-rbind(player_list, pl)
+        Sys.sleep(sleep)
+    }
+    player_list[player_list$BlnNHL == 'nhl', 'BlnNHL']<-TRUE
+    player_list[player_list$BlnNHL == 'non_nhl', 'BlnNHL']<-FALSE
+    player_list$BlnNHL <- as.factor(player_list$BlnNHL)
+    return(player_list)
+}
+{% endhighlight %}
+ 
+
+ 
+Let's take a look at what that gives us:
+
+{% highlight r %}
+head(player_list)
+{% endhighlight %}
+
+
+
+{% highlight text %}
+##                                                                        Complete
+## 1            <p class="nhl"><a href="/players/a/aaltoan01.html">Antti Aalto</a>
+## 2 <p class="non_nhl"><a href="/players/a/aaltoju01.html">Juhamatti Aaltonen</a>
+## 3      <p class="non_nhl"><a href="/players/a/aaltomi01.html">Miro Aaltonen</a>
+## 4        <p class="non_nhl"><a href="/players/a/abbeybr01.html">Bruce Abbey</a>
+## 5          <p class="nhl"><a href="/players/a/abbotge01.html">George Abbott</a>
+## 6             <p class="nhl"><a href="/players/a/abbotre01.html">Reg Abbott</a>
+##   BlnNHL                       URL               Name
+## 1   TRUE /players/a/aaltoan01.html        Antti Aalto
+## 2  FALSE /players/a/aaltoju01.html Juhamatti Aaltonen
+## 3  FALSE /players/a/aaltomi01.html      Miro Aaltonen
+## 4  FALSE /players/a/abbeybr01.html        Bruce Abbey
+## 5   TRUE /players/a/abbotge01.html      George Abbott
+## 6   TRUE /players/a/abbotre01.html         Reg Abbott
+{% endhighlight %}
+ 
+We have the complete string match, plus a column of whether they played in the NHL (or are just listed), what their player URL is, and their name. Interestingly, there's been a few people with the same name:
+
+{% highlight r %}
+summary(player_list$Name)
+{% endhighlight %}
+
+
+
+{% highlight text %}
+##    Length     Class      Mode 
+##      9255 character character
+{% endhighlight %}
+ 
+With this, we can start building a scraper for the detailed player data. 
+ 
+This became much more complex than I anticipated, due to the number of tables on some player records (for a good example, see [Justin Abdelkader](http://hockey-reference.com/players/a/abdelju01.html)). I'll have that scraping code available in GitHub [here](https://raw.githubusercontent.com/pbulsink/pbulsink.github.io/master/_rscripts/scrape_players.R), but I'll note a few things:
+ 
+ - hockey-reference.com hid some of the tables from scraping with the `readHTMLTable` function in the `XML` package by commenting them out. This was fixed by downloading the html, replacing the HTML comment code `<!--` and `-->` with `''`, and then feeding that into the function. 
+ - hockey-reference.com broke apart some of the stats for later seasons (advanced vs. basic), so they need to be sewn back together.
+ - goalies and players are reported separate by the function, but fortunately their HTML tables were named the same, so that made the processing easier. 
+ - more regex work was done to get the physical attributes, birth & death info, etc. 
+ 
+With player data scraped, we can start digging into it and see what's available!
