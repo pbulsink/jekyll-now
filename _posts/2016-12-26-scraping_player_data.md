@@ -60,7 +60,7 @@ pattern='<p class="([a-z\\_]+)"><a href="(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.h
  
 The `<p class="` and other parts help the string matching to line up with only the info that we want to collect. WE don't want to find links to elsewhere on the site, nor other random information that may be a html class. 
  
-For our example, you see that we collect class with `([a-z\\_]+)`. This means 'capture a group of one or more letters or an underscore'. Note that to properly excape the undescore (and other special characters), we need to use a double `//`, instead of the traditional single `/`. 
+For our example, you see that we collect class with `([a-z\\_]+)`. This means 'capture a group of one or more letters or an underscore'. Note that to properly excape the undescore (and other special characters), we need to use a double `\\`, instead of the traditional single `\`. 
  
 Similarly, we want to collect the URL, but we know what part of it will look like, so we use `(\\/players\\/[a-z]+\\/[a-zA-Z0-9]+\\.html)`. This would match `\players\a\aaltoan01.html` but not `\player\a\a\aaltoan01.html`. Having our known characters fixed in the regex will help prevent false positives. 
  
@@ -120,14 +120,62 @@ head(player_list)
 We have the complete string match, plus a column of whether they played in the NHL (or are just listed), what their player URL is, and their name. Interestingly, there's been a few people with the same name:
 
 {% highlight r %}
-summary(player_list$Name)
+summary(as.factor(player_list$Name))
 {% endhighlight %}
 
 
 
 {% highlight text %}
-##    Length     Class      Mode 
-##      9255 character character
+##        John Adams        Mike Brown   Peter Andersson      Sean Collins 
+##                 3                 3                 3                 3 
+##        Ab DeMarco        Ace Bailey        Alain Cote  Alexandre Picard 
+##                 2                 2                 2                 2 
+##     Andy Bathgate    Andy Schneider     Bill McCreary      Billy Harris 
+##                 2                 2                 2                 2 
+##      Billy Taylor         Bob Kelly       Bob Murdoch        Bob Murray 
+##                 2                 2                 2                 2 
+##      Brent Hughes    Brent Peterson     Brian Bradley     Brian Gibbons 
+##                 2                 2                 2                 2 
+##       Brian Smith     Bryan Hextall     Claude Larose       Colin White 
+##                 2                 2                 2                 2 
+##  Conner Bleackley     Cory Stillman         Dave Reid      David Jensen 
+##                 2                 2                 2                 2 
+##       Derek Smith         Don Smith   Earl Ingarfield   Erik Gustafsson 
+##                 2                 2                 2                 2 
+##        Greg Adams      Harry Watson    Harvey Bennett Henrik Samuelsson 
+##                 2                 2                 2                 2 
+##       Jack Gibson     Jack McDonald       Jack McGill     Jacques Locas 
+##                 2                 2                 2                 2 
+##       Jason Smith       Jim Johnson      Jim McKenzie      Jimmy Peters 
+##                 2                 2                 2                 2 
+##        Joe Cooper         Joe Matte       John Carter      John Stewart 
+##                 2                 2                 2                 2 
+##   Jonas Johansson       Juraj Mikus         Ken Hodge Konstantin Volkov 
+##                 2                 2                 2                 2 
+##       Lee Fogolin         Leo Reise   Michel Larocque       Mike Boland 
+##                 2                 2                 2                 2 
+##      Mike McMahon       Mike Murphy       Mike Peluso     Mike Rucinski 
+##                 2                 2                 2                 2 
+##      Mike Stevens     Mike Sullivan        Mike Walsh    Mikko Lehtonen 
+##                 2                 2                 2                 2 
+##       Milan Kraft    Neil Komadoski        Paul Evans      Petr Svoboda 
+##                 2                 2                 2                 2 
+##       Petr Sykora      Ron Anderson        Ron Wilson        Ryan Jones 
+##                 2                 2                 2                 2 
+##   Stephane Richer       Steve Smith         Stu Smith          Syl Apps 
+##                 2                 2                 2                 2 
+##        Terry Ryan        Tom Martin      Tom McCarthy  Vladimir Ruzicka 
+##                 2                 2                 2                 2 
+##    Aapeli Rasanen    Aaron Boogaard      Aaron Broten      Aaron Dawson 
+##                 1                 1                 1                 1 
+##      Aaron Downey      Aaron Gagnon       Aaron Gavey     Aaron Harstad 
+##                 1                 1                 1                 1 
+##      Aaron Haydon      Aaron Irving     Aaron Johnson        Aaron Lobb 
+##                 1                 1                 1                 1 
+##   Aaron MacKenzie      Aaron Marvin      Aaron Miller        Aaron Ness 
+##                 1                 1                 1                 1 
+##    Aaron Palushaj        Aaron Rome        Aaron Snow           (Other) 
+##                 1                 1                 1              9072
 {% endhighlight %}
  
 With this, we can start building a scraper for the detailed player data. 
