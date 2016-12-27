@@ -23,15 +23,37 @@ getPlayerList<-function(sleep=30){
 }
 
 getPlayerTables<-function(url){
-    htmlpage<-getURL(url)
+    agents <- c("Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36",
+                "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36",
+                "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/602.2.14 (KHTML, like Gecko) Version/10.0.1 Safari/602.2.14",
+                "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36")
+    htmlpage <- try(getURL(url, header = FALSE,
+                           .opts = curlOptions(
+                               referer = 'hockey-reference.com',
+                               header = TRUE,
+                               followLocation = TRUE,
+                               useragent = agents[sample(1:8, 1)]))
+    )
+
+    if(class(htmlpage) == "try-error") {
+        message(paste0('HTML Try Error on: ', url))
+        htmlpage <- getURL(url, header = FALSE,
+                           .opts = curlOptions(
+                               referer = 'hockey-reference.com',
+                               header = TRUE,
+                               followLocation = TRUE,
+                               useragent = agents[sample(1:8, 1)]))
+    }
     htmlpage<-gsub(htmlpage, pattern = '<!--', replacement = '')
     htmlpage<-gsub(htmlpage, pattern = '-->', replacement = '')
 
     #Read in Tables
-    message('htmlTables')
     tables<-readHTMLTable(htmlpage)
 
-    message('metas')
     m1<-'<p><strong>Position<\\/strong>:\\s*([A-Z\\/]+)\\&'
     meta_pos<-str_match(htmlpage, m1)[,2]
     names(meta_pos)<-"Position"
@@ -65,12 +87,6 @@ getPlayerTables<-function(url){
     return(list(tables, metas))
 }
 
-addIf<-function(add_name, source_list){
-    if(add_name %in% names(source_list)){
-        return(source_list[add_name])
-    }
-    return(NA)
-}
 
 flattenTables<-function(tables){
     stats_nhl<-data.frame()
@@ -145,8 +161,8 @@ getPlayerStats<-function(player_list, sleep=30){
     goalie_stats_tables<-data.frame()
     player_meta_tables<-data.frame()
     plist<-player_list[player_list$BlnNHL == TRUE, ]
+    pb<-txtProgressBar(min = 0, max = nrow(plist), initial = 0)
     for(player in c(1:nrow(plist))){
-
         #prep HTML
         url<-paste0('http://www.hockey-reference.com', plist[player, 'URL'])
 
@@ -157,29 +173,42 @@ getPlayerStats<-function(player_list, sleep=30){
         else if('03.html' %in% url){
             pname<-paste(pname, "03")
         }
-        message(pname)
 
         scrape<-getPlayerTables(url)
         #Add to record
 
-        message('stats')
         tables<-flattenTables(scrape[[1]])
         tables$Name<-pname
 
         if("G" %in% scrape[[2]]['Position']){
-            message('goalie')
             goalie_stats_tables<-rbind.fill(goalie_stats_tables, tables)
         }
         else{
-            message('player')
             player_stats_tables<-rbind.fill(player_stats_tables, tables)
         }
         player_meta_tables<-rbind.fill(player_meta_tables, data.frame("Name"=pname, "Active"=plist[player, 'Active'], t(unlist(scrape[[2]]))))
 
-
-        message('sleep')
+        setTxtProgressBar(pb,player)
         Sys.sleep(sleep)
     }
     return(list("PlayerStats"=player_stats_tables, "GoalieStats"=goalie_stats_tables, "PlayerMeta"=player_meta_tables))
 }
 
+#'scrapeByAlphabet
+#'A function to scrape and save player tables by last name, breaking up the scraping
+#'into each chunk to prevent progress loss by scraping error (HTML error)
+#'@param player_list a player list of the type created by getPlayerNames
+#'@param letters_to_scrape the letters of last names to scrape (default all letters)
+#'@param letter_sleep The length of time to sleep between letters
+#'@param ... Additional params for getPlayerStats
+#'
+#'@return True, if successful
+scrapeByAlphabet<-function(player_list, letters_to_scrape=letters, letter_sleep=120, ...){
+    for(letter in letters_to_scrape){
+        message(paste0("Getting Players with last name of ", toupper(letter), "."))
+        ps<-getPlayerStats(player_list[startsWith(player_list$URL, paste0('/players/', letter)),], ...)
+        saveRDS(ps, paste0("./_data/players/players_",letter,".RDS"))
+        Sys.sleep(letter_sleep)
+    }
+    return(TRUE)
+}

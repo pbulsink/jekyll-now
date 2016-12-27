@@ -60,7 +60,7 @@ getPredictedResults<-function(eloHist, schedule,pWin,pLoss){
         predicted[g,'VSO']<-d*0.36*v
         predicted[g,'HSO']<-d*0.36*h
         predicted[g,'HOT']<-d*0.64*h
-        
+
     }
     return(list('predicted'=predicted, 'resultsNum'=resultsNum, 'resultsName'=resultsName))
 }
@@ -81,7 +81,7 @@ seasonScore<-function(eloHist, schedule, pResults){
     rName<-pr$resultsName
     multiBrier6<-sum(calcscore(results~predicted$VWin+predicted$VOT+predicted$VSO+predicted$HSO+predicted$HOT+predicted$HWin, bounds=c(0,1)))/nrow(predicted)
     multiLL6<-MultiLogLoss(y_true=rName, y_pred=predicted)
-    
+
     message('multiWinDraw')
     pr<-getPredictedResults(eloHist, schedule, pWin6, pLoss6)
     predicted<-pr$predicted
@@ -99,7 +99,7 @@ seasonScore<-function(eloHist, schedule, pResults){
     pre$HWin<-predicted$HWin/(predicted$VWin+predicted$D+predicted$HWin)
     multiBrierWinDraw<-sum(calcscore(res~pre$VWin+pre$D+pre$HWin, bounds=c(0,1)))/nrow(predicted)
     multiLLWinDraw<-MultiLogLoss(y_true=rName, y_pred=pre)
-    
+
     message('multiWinOTDraw')
     pr<-getPredictedResults(eloHist, schedule, pWin4, pLoss4)
     predicted<-pr$predicted
@@ -116,8 +116,8 @@ seasonScore<-function(eloHist, schedule, pResults){
     multiBrierWinOTDraw<-sum(calcscore(res~pre$VWin+pre$D+pre$HWin, bounds=c(0,1)))/nrow(predicted)
     rName[rName %in% c('VSO', 'HSO')]<-'D'
     multiLLWinOTDraw<-MultiLogLoss(y_true=rName, y_pred=pre)
-    
-    
+
+
     message('binaryScore')
     pr<-getPredictedResults(eloHist, schedule, pWin2, pLoss2)
     predicted<-pr$predicted
@@ -128,10 +128,10 @@ seasonScore<-function(eloHist, schedule, pResults){
     binLL<-LogLoss(y_true=res, y_pred=pre)
     binBrier<-sum(unlist(brierscore(res~pre)))/length(pre)
     percentBin<-sum(c(res[res==1 & pre > 0.5]), res[res==0 & pre < 0.5])/length(res)
-    
+
     detach(pResults)
-    return(data.frame('multiBrier6'=multiBrier6, 'multiLL6'=multiLL6, 
-                'multiBrierWinDraw'=multiBrierWinDraw, 'multiLLWinDraw'=multiLLWinDraw, 
+    return(data.frame('multiBrier6'=multiBrier6, 'multiLL6'=multiLL6,
+                'multiBrierWinDraw'=multiBrierWinDraw, 'multiLLWinDraw'=multiLLWinDraw,
                 'multiBrierWinOTDraw'=multiBrierWinOTDraw, 'multiLLWinOTDraw'=multiLLWinOTDraw,
                 'binBrier'=binBrier, 'binLL'=binLL, 'percentBin'=percentBin))
 }
@@ -185,7 +185,7 @@ pResCalc<-function(elo, nhl_data){
     nhl_data$EloDiff<-apply(nhl_data, 1, function(x) eloAtGameTime(x))
 
     propresults<-list(EloDiff=numeric(), Win=numeric(), WinOT=numeric(), WinSO=numeric(), LossSO=numeric(), LossOT=numeric(), Loss=numeric())
-    
+
     message('tabulate elo results')
     for (i in unique(round(nhl_data$EloDiff))){
         propresults$EloDiff<-c(propresults$EloDiff, i)
@@ -214,7 +214,7 @@ pResCalc<-function(elo, nhl_data){
     propresults$nLoss<-propresults$Total-propresults$Loss
     # propresults$nDrawOT<-propresults$Total-propresults$DrawOT
     # propresults$nDrawSO<-propresults$Total-propresults$DrawSO
-    
+
     pWin6<-glm(cbind(Win, nWin)~EloDiff, data = propresults, family = binomial('logit'))
     # pWinOT6<-list('fit'=fitdistr(propresults$EloDiff[propresults$WinOT>0], 'normal'), 'p'=propresults$WinOT/propresults$Total)
     # pWinSO6<-list('fit'=fitdistr(propresults$EloDiff[propresults$WinSO>0], 'normal'), 'p'=propresults$WinSO/propresults$Total)
@@ -228,17 +228,17 @@ pResCalc<-function(elo, nhl_data){
     propresults$OTSOWin<-propresults$OTWin+propresults$WinSO
     propresults$OTLoss<-propresults$Loss+propresults$LossOT
     propresults$OTSOLoss<-propresults$OTLoss+propresults$LossSO
-    
+
     propresults$nOTWin<-propresults$Total-propresults$OTWin
     propresults$nOTSOWin<-propresults$Total-propresults$OTSOWin
     propresults$nOTLoss<-propresults$Total-propresults$OTLoss
     propresults$nOTSOLoss<-propresults$Total-propresults$OTSOLoss
-    
+
     pWin4<-glm(cbind(OTWin, nOTWin)~EloDiff, data = propresults, family = binomial('logit'))
     pWin2<-glm(cbind(OTSOWin, nOTSOWin)~EloDiff, data = propresults, family = binomial('logit'))
     pLoss4<-glm(cbind(OTLoss, nOTLoss)~EloDiff, data = propresults, family = binomial('logit'))
     pLoss2<-glm(cbind(OTSOLoss, nOTSOLoss)~EloDiff, data = propresults, family = binomial('logit'))
-    return(list('pWin6'=pWin6, 'pLoss6'=pLoss6, 'pWin4'=pWin4, 'pLoss4'=pLoss4, 'pWin2'=pWin2, 'pLoss2'=pLoss2#, 
+    return(list('pWin6'=pWin6, 'pLoss6'=pLoss6, 'pWin4'=pWin4, 'pLoss4'=pLoss4, 'pWin2'=pWin2, 'pLoss2'=pLoss2#,
                 #'pWinOT6'=pWinOT6, 'pLossOT6'=pLossOT6, 'pWinSO6'=pWinSO6, 'pLossSO6'=pLossSO6, 'pDrawSO'=pDrawSO, 'pDrawOT'=pDrawOT,
                 ))
 }
@@ -247,13 +247,13 @@ eloVarPlotData<-function(nhl_data){
     cl <- makeCluster(3, outfile="./stdout.log")
     registerDoParallel(cl)
     exportFuns<-c('scoreEloVar', 'seasonScore', 'calculateEloRatings', 'pResCalc', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults')
-    scores<-foreach(i=0:50, .combine='c', .export=exportFuns, .packages = c('MASS','scoring', 'reshape2', 'MLmetrics')) %:% foreach(j=0:0) %dopar% scoreEloVar(p=c(i, j/5), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
+    scores<-foreach(i=0:50, .combine='c', .export=exportFuns, .packages = c('MASS','scoring', 'reshape2', 'MLmetrics')) %:% foreach(j=0:40) %dopar% scoreEloVar(p=c(i(2), j/5), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
 
     stopCluster(cl)
 
     scores<-as.data.frame(apply(as.data.frame(do.call('rbind', scores)), 2, unlist))
-    
+
     return(scores)
-    
+
     #ggplot(multiScores, aes(x=kPrime, y=gammaK, z=multiLL6, fill=multiLL6)) + geom_tile() + coord_equal() + geom_contour(color = "white", alpha = 0.5) + scale_fill_distiller(palette="Spectral", na.value="white") + theme_bw()
 }
