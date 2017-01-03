@@ -81,7 +81,7 @@ getPlayerInfo <- function(url) {
     # Read in Tables
     tables <- readHTMLTable(htmlpage)
 
-    m1 <- "<p><strong>Position<\\/strong>:\\s*([A-Z\\/]+)\\&"
+    m1 <- "<p><strong>Position<\\/strong>:\\s*([A-Z\\/]+)\\&*"
     meta_pos <- str_match(htmlpage, m1)[, 2]
     names(meta_pos) <- "Position"
 
@@ -93,7 +93,7 @@ getPlayerInfo <- function(url) {
     meta_h_w <- str_match(htmlpage, m2)[, c(2:5)]
     names(meta_h_w) <- c("HeightImp", "WeightImp", "HeightMetric", "WeightMetric")
 
-    m3 <- "data-birth=\"([0-9-]*)\"+>.+\"birthPlace\">\\s*in\\&nbsp;([A-Za-z]*),.+country=([A-Za-z]*).+province=([A-Za-z]*).+state=([A-Za-z]*)\""
+    m3 <- "data-birth=\"([0-9-]*)\"+>.+\"birthPlace\">\\s*in\\&nbsp;([A-Za-z\\.(?:\\&nbsp;)]*),.+country=([A-Za-z\\.(?:\\&nbsp;)]*).+province=([A-Za-z\\.(?:\\&nbsp;)]*).+state=([A-Za-z\\.(?:\\&nbsp;)]*)\""
     meta_birth <- str_match(htmlpage, m3)[2:6]
     names(meta_birth) <- c("Birthdate", "BirthPlace", "Country", "Province", "State")
 
@@ -142,12 +142,10 @@ flattenTables <- function(tables) {
 
     if ("skaters_advanced" %in% names(tables)) {
         merge(stats_nhl, tables$skaters_advanced, by = c("Season", "Team"), all = TRUE)
-        # stats_nhl<-cbind(stats_nhl, tables$skaters_advanced)
         if ("Age.y" %in% colnames(stats_nhl))
             stats_nhl <- stats_nhl[, -which(names(stats_nhl) %in% "")]
         if ("Lg.y" %in% colnames(stats_nhl))
             stats_nhl <- stats_nhl[, -which(names(stats_nhl) %in% "")]
-        # stats_nhl<-stats_nhl[,-which(names(stats_nhl) %in% 'Age.y', 'Lg.y')]
 
         if ("" %in% colnames(stats_nhl))
             stats_nhl <- stats_nhl[, -which(names(stats_nhl) %in% "")]
@@ -155,6 +153,20 @@ flattenTables <- function(tables) {
         colnames(stats_nhl)[colnames(stats_nhl) == "Lg.x"] <- "Lg"
         colnames(stats_nhl)[colnames(stats_nhl) == "GP.x"] <- "GP"
         colnames(stats_nhl)[colnames(stats_nhl) == "TOI.x"] <- "TOI"
+        colnames(stats_nhl)[colnames(stats_nhl) == "Tm"] <- "Team"
+    }
+    
+    if ("stats_misc_nhl" %in% names(tables)) {
+        stmisc<-tables$stats_misc_nhl
+        colnames(stmisc)[colnames(stmisc) == "Tm"] <- "Team"
+        stmisc<-subset(stmisc, select = -c(7:12))
+        stmisc<-subset(stmisc, select = c(Season, Age, Team, Lg, GC, G, A, PTS, GC.1, OPS, DPS, PS))
+        colnames(stmisc)[colnames(stmisc) == "G"] <- "Adj. G"
+        colnames(stmisc)[colnames(stmisc) == "A"] <- "Adj. A"
+        colnames(stmisc)[colnames(stmisc) == "PTS"] <- "Adj. PTS"
+        colnames(stmisc)[colnames(stmisc) == "GC.1"] <- "Adj. GC.1"
+        
+        merge(stats_nhl, stmisc, by = c("Season", "Team"), all = TRUE)
     }
 
     playoffs_nhl <- data.frame()
@@ -164,6 +176,8 @@ flattenTables <- function(tables) {
         # Sometimes there's '' named columns. Messes up rbind.fill
         if ("" %in% colnames(playoffs_nhl))
             playoffs_nhl <- playoffs_nhl[, -which(names(playoffs_nhl) %in% "")]
+        colnames(stats_nhl)[colnames(stats_nhl) == "Tm"] <- "Team"
+        
     }
 
     stats_other <- data.frame()
@@ -300,3 +314,82 @@ combinePlayerDataFrames <- function(directory = "./_data/players/") {
     return(TRUE)
 }
 
+#' Clean Player Data
+#' This function will process player data, returning clean data frames as a list
+#' 
+#' @param player_data The player_data to clean up
+#' @param drop_awards Whether to drop awards column. 
+#' 
+#' @return a list of three cleaned data.frames, containing
+#' \item{PlayerStats}{Combined player statistics}
+#' \item{GoalieStats}{Combined goalie statistics}
+#' \item{PlayerMeta}{Meta statistics for all (goalies and players)} 
+
+processPlayerData<-function(player_data, drop_awards=TRUE){
+    players<-player_data[[1]]
+    goalies<-player_data[[2]]
+    meta<-player_data[[3]]
+    
+    #Undo factors
+    numeric_columns<-c('Age','GP','G','A','PTS','+/-', 'PIM','EV','PP','SH',
+                       'GW','S','S%','TOI','TSA','FOW','FOL','FO%','HIT','BLK',
+                       'TK','GV','GS','W','L','T/O','GA','SA','SV','SV%','GAA',
+                       'SO','MIN','QS','QS%','RBS','GA%-','GSAA','GPS')
+    pnames<-colnames(players)
+    players<-data.frame(lapply(players, as.character), stringsAsFactors = FALSE)
+    colnames(players)<-pnames
+    
+    gnames<-colnames(goalies)
+    goalies<-data.frame(lapply(goalies, as.character), stringsAsFactors = FALSE)
+    colnames(goalies)<-gnames
+    
+    mnames<-colnames(meta)
+    meta<-data.frame(lapply(meta, as.character), stringsAsFactors = FALSE)
+    colnames(meta)<-mnames
+    
+    players[,numeric_columns]<-as.numeric(unlist(players[,numeric_columns]))
+    goalies[,numeric_columns]<-as.numeric(unlist(goalies[,numeric_columns]))
+
+    
+    #Fix Team vs. Tm
+    players[is.na(players$Team), ]$Team<-players[is.na(players$Team), ]$Tm
+    players<-subset(players, select = -Tm)
+    
+    goalies[is.na(goalies$Team), ]$Team<-goalies[is.na(goalies$Team), ]$Tm
+    goalies<-subset(goalies, select = -Tm)
+    
+    #Remove double or more teams sums
+    for(i in c(2:5)){
+        players<-subset(players, Team != paste0(i, " Teams"))
+        goalies<-subset(goalies, Team != paste0(i, " Teams"))
+    }
+    
+    #Average Time On Ice
+    toi<-players$ATOI
+    toi[toi == ""]<-"0:0"
+    toi[is.na(toi)]<-"0:0"
+    players$ATOI<-unlist(lapply(toi, function(x) as.numeric(unlist(strsplit(x, ":")))[1] + as.numeric(unlist(strsplit(x, ":"))[2])/60))
+    toi<-goalies$ATOI
+    toi[toi == ""]<-"0:0"
+    toi[is.na(toi)]<-"0:0"
+    goalies$ATOI<-unlist(lapply(toi, function(x) as.numeric(unlist(strsplit(x, ":")))[1] + as.numeric(unlist(strsplit(x, ":"))[2])/60))
+    
+    
+    #Drop Awards
+    if(drop_awards){
+        players<-subset(players, select = -Awards)
+        goalies<-subset(goalies, select = -Awards)
+    }
+    
+    #Order data.frame
+    players<-players[with(players, order(Name, Age, Lg, Team, Playoffs)),]
+    goalies<-goalies[with(goalies, order(Name, Age, Lg, Team, Playoffs)),]
+ 
+    #Refactor Select Columns
+    players$Season<-as.factor(players$Season)
+    players$Team<-as.factor(players$Team)
+    players$Lg<-as.factor(players$Lg)
+    goalies$Season<-as.factor(goalies$Season)
+    goalies$Team<-as.factor(goalies$Team)
+    goalies$Lg<-as.factor(goalies$Lg)
+}
