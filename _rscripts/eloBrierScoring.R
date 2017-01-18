@@ -22,9 +22,9 @@ getPredictedResults<-function(eloHist, schedule,pWin,pLoss){
     resultsNum<-rep(0, ngames)
     resultsName<-rep('', ngames)
     for(g in c(1:ngames)){
-        home<-make.names(as.character(schedule[g,'Home']))
-        visitor<-make.names(as.character(schedule[g,'Visitor']))
-        elo_diff<-tail(eloHist[eloHist$Date < schedule[g, 'Date'],home],1)-tail(eloHist[eloHist$Date < schedule[g, 'Date'],visitor],1)
+        home<-make.names(as.character(schedule[g,'HomeTeam']))
+        visitor<-make.names(as.character(schedule[g,'AwayTeam']))
+        elo_diff<-tail(eloHist[eloHist$Date < schedule[g, 'Date'], home],1)-tail(eloHist[eloHist$Date < schedule[g, 'Date'],visitor],1)
 
         #Results
         if (schedule[g,'Result'] == 0){
@@ -133,7 +133,7 @@ seasonScore<-function(eloHist, schedule, pResults){
     return(data.frame('multiBrier6'=multiBrier6, 'multiLL6'=multiLL6,
                 'multiBrierWinDraw'=multiBrierWinDraw, 'multiLLWinDraw'=multiLLWinDraw,
                 'multiBrierWinOTDraw'=multiBrierWinOTDraw, 'multiLLWinOTDraw'=multiLLWinOTDraw,
-                'binBrier'=binBrier, 'binLL'=binLL, 'percentBin'=percentBin))
+                'binBrier'=binBrier, 'binLL'=binLL, 'percentRight'=percentBin))
 }
 
 scoreEloVar<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data){
@@ -165,6 +165,11 @@ optEloVar<-function(nhl_data){
     return(optim(par=c(10, 1), fn=scoreEloVar, nhl_data=nhl_data))  #, lower=0, upper=100))
 }
 
+eloAtGameTime<-function(game, elo){
+    elod<-tail(elo[elo$Date < as.Date(game['Date']), make.names(c(game['HomeTeam'], game['AwayTeam']))], 1)
+    return(as.numeric(elod[1] - elod[2]))
+}
+
 pResCalc<-function(elo, nhl_data){
     message('massage elo data')
 
@@ -177,12 +182,8 @@ pResCalc<-function(elo, nhl_data){
     elo_long<-elo_long[(filter(elo_long,c(-1,1))!= 0)[,3],]
     elo_long<-elo_long[complete.cases(elo_long),]
 
-    eloAtGameTime<-function(game){
-        elod<-tail(elo[elo$Date < as.Date(game['Date']), make.names(c(game['Home'], game['Visitor']))], 1)
-        return(as.numeric(elod[1] - elod[2]))
-    }
     nhl_data$EloDiff<-0
-    nhl_data$EloDiff<-apply(nhl_data, 1, function(x) eloAtGameTime(x))
+    nhl_data$EloDiff<-apply(nhl_data, 1, function(x) eloAtGameTime(x, elo))
 
     propresults<-list(EloDiff=numeric(), Win=numeric(), WinOT=numeric(), WinSO=numeric(), LossSO=numeric(), LossOT=numeric(), Loss=numeric())
 
@@ -244,14 +245,14 @@ pResCalc<-function(elo, nhl_data){
 }
 
 eloVarPlotData<-function(nhl_data){
-    cl <- makeCluster(3, outfile="./stdout.log")
+    cl <- makeCluster(3, outfile="./stdout2.log")
     registerDoParallel(cl)
-    exportFuns<-c('scoreEloVar', 'seasonScore', 'calculateEloRatings', 'pResCalc', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults')
-    scores<-foreach(i=0:50, .combine='c', .export=exportFuns, .packages = c('MASS','scoring', 'reshape2', 'MLmetrics')) %:% foreach(j=0:40) %dopar% scoreEloVar(p=c(i(2), j/5), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
+    exportFuns<-c('scoreEloVar', 'seasonScore', 'calculateEloRatings', 'eloAtGameTime', 'pResCalc', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults')
+    scores<-foreach(i=0:50, .export=exportFuns, .combine = 'c', .packages = c('MASS','scoring', 'reshape2', 'MLmetrics')) %:% foreach(j=0:10) %dopar% scoreEloVar(p=c(i, j), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
 
     stopCluster(cl)
 
-    scores<-as.data.frame(apply(as.data.frame(do.call('rbind', scores)), 2, unlist))
+    #scores<-as.data.frame(apply(as.data.frame(do.call('rbind', scores)), 2, unlist))
 
     return(scores)
 
