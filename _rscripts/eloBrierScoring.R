@@ -71,7 +71,7 @@ getPredictedResults<-function(eloHist, schedule,pWin,pLoss){
 #' @param schedule All games to calculate brier score over
 #' @param pWin pWin logit fit
 #' @param pLoss pLoss logit fit
-#' @return a single numerical brier score. 0 is best, 1 is worst
+#' @return list of scores
 seasonScore<-function(eloHist, schedule, pResults){
     attach(pResults)
     message('multi6')
@@ -252,7 +252,7 @@ eloVarPlotData<-function(nhl_data){
 
     stopCluster(cl)
 
-    #scores<-as.data.frame(apply(as.data.frame(do.call('rbind', scores)), 2, unlist))
+    scores<-as.data.frame(apply(as.data.frame(do.call('rbind', scores)), 2, unlist))
 
     return(scores)
 
