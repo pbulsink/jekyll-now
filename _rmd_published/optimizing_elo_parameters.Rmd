@@ -1,7 +1,7 @@
 ---
 title: "Optimizing Elo Parameters for Game Predictions"
 author: "Philip Bulsink"
-date: "December 12, 2016"
+date: "January 18, 2017"
 status: process
 published: false
 layout: post
@@ -41,7 +41,7 @@ bB<-ggplot(scorem[scorem$variable==unique(scorem$variable)[8],], aes(gammaK, kPr
 pR<-ggplot(scorem[scorem$variable==unique(scorem$variable)[9],], aes(gammaK, kPrime))+geom_raster(aes(fill=value), interpolate = TRUE)+ggtitle(unique(scorem$variable)[9])+scale_fill_gradient(low = 'darkgreen', high='orange')
 ```
 
-```{r multiplot_scores}
+```{r multiplot_scores, fig.width=10, fig.height=7}
 grid.arrange(mLL6, mLLWD, mLLWOTD, mB6, mBWD, mBWOTD, bLL, bB, pR, ncol=3, nrow=3)
 ```
 

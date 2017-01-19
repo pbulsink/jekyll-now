@@ -4,12 +4,8 @@ title: About
 permalink: /about/
 ---
 
-Some information about you!
-
-### More Information
-
-A place to include any other types of information that you'd like to include about yourself.
+This is a blog that I've been writing. It's mostly about hockey analytics, but it might include some chemistry mixed in.
 
 ### Contact me
 
-[email@domain.com](mailto:email@domain.com)
+[bulsinkp@gmail.com](mailto:bulsinkp@gmail.com)
