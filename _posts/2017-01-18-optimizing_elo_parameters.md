@@ -1,7 +1,7 @@
 ---
 title: "Optimizing Elo Parameters for Game Predictions"
 author: "Philip Bulsink"
-date: "December 12, 2016"
+date: "January 18, 2017"
 status: publish
 published: true
 layout: post
