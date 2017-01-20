@@ -127,7 +127,7 @@ seasonScore<-function(eloHist, schedule, pResults){
     res[results >= 4]<-1
     binLL<-LogLoss(y_true=res, y_pred=pre)
     binBrier<-sum(unlist(brierscore(res~pre)))/length(pre)
-    percentBin<-sum(c(res[res==1 & pre > 0.5]), res[res==0 & pre < 0.5])/length(res)
+    percentBin<-sum(c(length(res[res==1 & pre > 0.5])), length(res[res==0 & pre < 0.5]))/length(res)
 
     detach(pResults)
     return(data.frame('multiBrier6'=multiBrier6, 'multiLL6'=multiLL6,
@@ -150,16 +150,50 @@ scoreEloVar<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0
     message("Calculating pWin, pLoss")
     pResults<-pResCalc(elo$Ratings, nhl_data)
 
-    #Calculate Brier Score
-    message("Calculating Scores Score")
+    #Calculate Score
+    message("Calculating Score")
     elo16<-elo$Ratings[(elo$Ratings$Date>as.Date("2015-08-01") & elo$Ratings$Date<as.Date("2016-08-01")),]
     nhl16<-nhl_data[(nhl_data$Date > as.Date("2015-08-01") & nhl_data$Date < as.Date("2016-08-01")),]
     s<-seasonScore(elo16, schedule = nhl16, pResults)
     message(paste0("LLM6: ", s[['multiLL6']], " LLWD: ", s[['multiLLWinDraw']], " LLWOTD: ", s[['multiLLWinOTDraw']]," LLBin: ", s[['binLL']]," BrierM6: ", s[['multiBrier6']], " BWD: ", s[['multiBrierWinDraw']], " BWOTD: ", s[['multiBrierWinOTDraw']]," BBin: ", s[['binBrier']], ' percentRight:', s[['percentRight']]))
     scores<-list('kPrime'=kPrime, 'gammaK'=gammaK, 'multiLL6'=s[['multiLL6']], 'multiLLWinDraw'=s[['multiLLWinDraw']], 'multiLLWinOTDraw'=s[['multiLLWinOTDraw']], 'binLL'=s[['binLL']], 'multiBrier6'=s[['multiBrier6']], 'multiBrierWinDraw'=s[['multiBrierWinDraw']], 'multiBrierWinOTDraw'=s[['multiBrierWinOTDraw']], 'binBrier'=s[['binBrier']], 'percentRight'=s[['percentRight']])
     return(scores)
-
 }
+
+fideScoreElo<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data){
+    #Calculate Elo by parameter
+    kPrime=p[1]
+    gammaK=p[2]
+    #regressStrength=p[3]
+    #homeAdv=p[4]
+    #newTeam=1500-4*p[5] # Thus, as p5 goes up, newteam ratings go down. Typically p[5] = 50, newTeam=1300
+    message(paste0("Calculating Elo with kPrime=",kPrime," gammaK=",gammaK," newTeam=",newTeam," regStrength=",regressStrength," homeAdv=",homeAdv))
+    elo<-calculateEloRatings(nhl_data, k=kPrime, gammaK = gammaK, new_teams = newTeam, regress_strength = regressStrength, home_adv = homeAdv, k_var = TRUE, meta=FALSE)
+
+    message("Calculating Score")
+
+    elo16<-elo$Ratings[(elo$Ratings$Date>as.Date("2015-08-01") & elo$Ratings$Date<as.Date("2016-08-01")),]
+    elo_long<-melt(elo16, id = "Date", value.name = "Rating", variable.name = "Team", na.rm = TRUE)
+    elo_long<-rbind(elo_long, NA)
+    #removes rows where no change has occurred (a team didn't play)
+    elo_long<-elo_long[(filter(elo_long,c(-1,1))!= 0)[,3],]
+    elo_long<-elo_long[complete.cases(elo_long),]
+
+    nhl16<-nhl_data[(nhl_data$Date > as.Date("2015-08-01") & nhl_data$Date < as.Date("2016-08-01")),]
+    nhl16[nhl16$Result > 0.5, "Result"]<-1
+    nhl16[nhl16$Result < 0.5, "Result"]<-0
+    nhl16$EloDiff<-0
+    nhl16$EloDiff<-apply(nhl16, 1, function(x) eloAtGameTime(x, elo16))
+    nhl16$Predict<-predictEloResults.vec(nhl16$EloDiff)
+
+    ll<-LogLoss(y_true=nhl16$Result, y_pred=nhl16$Predict)
+    br<-sum(unlist(brierscore(nhl16$Result~nhl16$Predict)))/length(nhl16$Predict)
+    pr<-sum(c(nrow(nhl16[nhl16$Predict > 0.5 & nhl16$Result == 1, ]), nrow(nhl16[nhl16$Predict < 0.5 & nhl16$Result == 0, ])))/length(nhl16$Predict)
+
+    return(list("LogLoss"=ll, "Brier"=br,"Percent"=pr))
+}
+
+predictEloResults.vec<-Vectorize(FUN = function(elo_diff, h_adv=0){return(1/(1 + (10^(((-1*elo_diff)+h_adv)/400))))},vectorize.args = 'elo_diff')
 
 optEloVar<-function(nhl_data){
     return(optim(par=c(10, 1), fn=scoreEloVar, nhl_data=nhl_data))  #, lower=0, upper=100))
@@ -247,8 +281,8 @@ pResCalc<-function(elo, nhl_data){
 eloVarPlotData<-function(nhl_data){
     cl <- makeCluster(3, outfile="./stdout2.log")
     registerDoParallel(cl)
-    exportFuns<-c('scoreEloVar', 'seasonScore', 'calculateEloRatings', 'eloAtGameTime', 'pResCalc', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults')
-    scores<-foreach(i=0:50, .export=exportFuns, .combine = 'c', .packages = c('MASS','scoring', 'reshape2', 'MLmetrics')) %:% foreach(j=0:10) %dopar% scoreEloVar(p=c(i, j), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
+    exportFuns<-c('scoreEloVar', 'seasonScore', 'calculateEloRatings', 'eloAtGameTime', 'pResCalc', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults', 'fideScoreElo')
+    scores<-foreach(i=0:50, .export=exportFuns, .combine = 'c', .packages = c('MASS','scoring', 'reshape2', 'MLmetrics')) %:% foreach(j=0:10) %dopar% fideScoreElo(p=c(i, j), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
 
     stopCluster(cl)
 
