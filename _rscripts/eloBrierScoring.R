@@ -189,8 +189,8 @@ fideScoreElo<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=
     ll<-LogLoss(y_true=nhl16$Result, y_pred=nhl16$Predict)
     br<-sum(unlist(brierscore(nhl16$Result~nhl16$Predict)))/length(nhl16$Predict)
     pr<-sum(c(nrow(nhl16[nhl16$Predict > 0.5 & nhl16$Result == 1, ]), nrow(nhl16[nhl16$Predict < 0.5 & nhl16$Result == 0, ])))/length(nhl16$Predict)
-
-    return(list("LogLoss"=ll, "Brier"=br,"Percent"=pr))
+    message('success')
+    return(list('kPrime'=kPrime, 'gammaK'=gammaK, "LogLoss"=ll, "Brier"=br,"Percent"=pr))
 }
 
 predictEloResults.vec<-Vectorize(FUN = function(elo_diff, h_adv=0){return(1/(1 + (10^(((-1*elo_diff)+h_adv)/400))))},vectorize.args = 'elo_diff')
@@ -279,9 +279,10 @@ pResCalc<-function(elo, nhl_data){
 }
 
 eloVarPlotData<-function(nhl_data){
-    cl <- makeCluster(3, outfile="./stdout2.log")
+    colnames(nhl_data)<-c("Date","HomeTeam","AwayTeam","Result","Diff")
+    cl <- makeCluster(6, outfile="./stdout.log")
     registerDoParallel(cl)
-    exportFuns<-c('scoreEloVar', 'seasonScore', 'calculateEloRatings', 'eloAtGameTime', 'pResCalc', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults', 'fideScoreElo')
+    exportFuns<-c('scoreEloVar', 'seasonScore', 'calculateEloRatings', 'eloAtGameTime', 'pResCalc', 'splitDates', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults', 'fideScoreElo', 'predictEloResults.vec')
     scores<-foreach(i=0:50, .export=exportFuns, .combine = 'c', .packages = c('MASS','scoring', 'reshape2', 'MLmetrics')) %:% foreach(j=0:10) %dopar% fideScoreElo(p=c(i, j), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data)
 
     stopCluster(cl)

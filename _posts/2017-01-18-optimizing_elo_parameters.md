@@ -40,3 +40,23 @@ The last row are the scenarios pared down to predictions of win/loss. Log loss o
 Sometimes, though, these things look reversed, such as the better performance of the Percent Right plot at high gammaK and kPrime, but the poorer performance there for all the Brier results. If I can solve that, I'll update this post.
  
 At the end, though, I don't see this as being that useful. Being only a few points better at predicting game results than a coinflip is not a selling point. But, maybe the value is in season predicting? I'll look at some of that in the future. 
+ 
+*Update*
+But first, I've come to realize that I was overly-complicated in generating predictions for the winning team. Recall that the original ELO formula contains a predictive equation for the home team's chances $P_home$:
+ 
+$$P_home = 1/(1+10^(R_away - R_home))$$
+ 
+where $R_home$ is the home team ranking, and $R_away$ is the away ranking. 
+ 
+Using this, I've re-run the optimization, and achieved the following results:
+ 
+
+ 
+
+{% highlight r %}
+grid.arrange(loglossplot, brierplot, percentplot, ncol=3, nrow=1)
+{% endhighlight %}
+
+![plot of chunk multiplot_scores2](/images/multiplot_scores2-1.png)
+ 
+But, after all that, we can look and see that this isn't really an improvement. Oh well.
