@@ -44,7 +44,7 @@ At the end, though, I don't see this as being that useful. Being only a few poin
 *Update*
 But first, I've come to realize that I was overly-complicated in generating predictions for the winning team. Recall that the original ELO formula contains a predictive equation for the home team's chances $P_home$:
  
-$$P_home = 1/(1+10^(R_away - R_home))$$
+$$P_{home} = 1/(1+10~^{(R_{away} - R_{home})})$$
  
 where $R_home$ is the home team ranking, and $R_away$ is the away ranking. 
  
