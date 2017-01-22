@@ -62,7 +62,7 @@ But first, I've come to realize that I was overly-complicated in generating pred
 
 $$P_{home} = 1/(1+10~^{(R_{away} - R_{home})})$$
 
-where $R_home$ is the home team ranking, and $R_away$ is the away ranking. 
+where $$R_{home}$$ is the home team ranking, and $$R_{away}$$ is the away ranking. 
 
 Using this, I've re-run the optimization, and achieved the following results:
 
