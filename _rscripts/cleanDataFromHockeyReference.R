@@ -109,20 +109,20 @@ tieSort<-function(x) {
     }
 }
 
-readHockeyData<-function(data_dir="./_data", nhl_year_list = c(1918:2017), wha_year_list = c(1973:1979), playoffs = TRUE, lastPlayoffs = FALSE, ...){
+readHockeyData<-function(data_dir="./_data/", nhl_year_list = c(1918:2017), wha_year_list = c(1973:1979), playoffs = TRUE, lastPlayoffs = FALSE, ...){
     df_nhl <- data.frame(Date = NULL, Visitor = NULL, G = NULL, Home = NULL, G.1 = NULL, X.1 = NULL)
     df_wha <- df_nhl
     nhl_year_list<-nhl_year_list[nhl_year_list != 2005]
     message('reading NHL data')
     for (year in 1:length(nhl_year_list)) {
-        df_nhl <- rbind(df_nhl, read.csv(paste("./_data/", nhl_year_list[year] - 1, nhl_year_list[year], ".csv", sep = ""))[2:7])
+        df_nhl <- rbind(df_nhl, read.csv(paste(data_dir, nhl_year_list[year] - 1, nhl_year_list[year], ".csv", sep = ""))[2:7])
     }
     if (playoffs) {
         for (year in 1:(length(nhl_year_list) - 1)) {
             if (nhl_year_list[year] != 1920){df_nhl <- rbind(df_nhl, read.csv(paste("./_data/", nhl_year_list[year] - 1, nhl_year_list[year], "Playoffs.csv", sep = ""))[2:7])}
         }
         if (lastPlayoffs) {
-            df_nhl <- rbind(df_nhl, read.csv(paste("./_data/", nhl_year_list[length(nhl_year_list)] - 1, nhl_year_list[length(nhl_year_list)], "Playoffs.csv", sep = ""))[2:7])
+            df_nhl <- rbind(df_nhl, read.csv(paste(data_dir, nhl_year_list[length(nhl_year_list)] - 1, nhl_year_list[length(nhl_year_list)], "Playoffs.csv", sep = ""))[2:7])
         }
     }
 
@@ -131,11 +131,11 @@ readHockeyData<-function(data_dir="./_data", nhl_year_list = c(1918:2017), wha_y
     if(length(wha_year_list) > 0){
         message('reading WHA data')
         for (year in 1:length(wha_year_list)) {
-            df_wha <- rbind(df_wha, read.csv(paste("./_data/wha", wha_year_list[year] - 1, wha_year_list[year], ".csv", sep = ""))[2:7])
+            df_wha <- rbind(df_wha, read.csv(paste(data_dir,"wha", wha_year_list[year] - 1, wha_year_list[year], ".csv", sep = ""))[2:7])
         }
         if (playoffs) {
             for (year in 1:(length(wha_year_list))) {
-                df_wha <- rbind(df_wha, read.csv(paste("./_data/wha", wha_year_list[year] - 1, wha_year_list[year], "Playoffs.csv", sep = ""))[2:7])
+                df_wha <- rbind(df_wha, read.csv(paste(data_dir,"wha", wha_year_list[year] - 1, wha_year_list[year], "Playoffs.csv", sep = ""))[2:7])
             }
         }
 
