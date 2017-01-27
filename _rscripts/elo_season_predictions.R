@@ -36,10 +36,17 @@ predictSeasonElo<-function(elo_data, schedule, n_sims=10){
     team_results$Points<-apply(team_performance[,(2*n_sims+1):(3*n_sims)], 1, mean)
     team_results$PointsSD<-apply(team_performance[,(2*n_sims+1):(3*n_sims)], 1, sd)
 
-    team_results
+    return(team_results)
 }
 
 predictEloResults.vec<-Vectorize(FUN = function(elo_diff, h_adv=0){return(1/(1 + (10^(((-1*elo_diff)+h_adv)/400))))},vectorize.args = 'elo_diff')
-predictEloWins.vec<-Vectorize(FUN = function(pWin, n_sims){return(sample(c(0,0.4, 0.6, 1), size = n_sims, replace = TRUE, prob=c(1-pWin-0.1, 0.05, 0.05, pWin-0.1)))},vectorize.args = 'pWin')
+predictEloWins.vec<-Vectorize(FUN = function(pWin, n_sims){return(sample(c(0,0.4, 0.6, 1), size = n_sims, replace = TRUE, prob=c(1-pWin, 0.1-0.1*pWin, 0.1*pWin, pWin)))},vectorize.args = 'pWin')
 
-sum(dnorm(x=p$Points-abs(p$Points-p$ActualPoints), mean = p$Points, sd=p$PointsSD))
+scoreEloSeasonPredicted<-function(elo_data, schedule, actual_points, n_sims=10){
+    results<-predictSeasonElo(elo_data = elo_data, schedule = schedule, n_sims = n_sims)
+
+    d<-merge(results, actual_points)
+
+    return(sum(dnorm(x=d$ActualPoints, mean = d$Points, sd=d$PointsSD)))
+}
+

@@ -1,0 +1,112 @@
+---
+title: "Scoring ELO Over a Season"
+author: "Philip Bulsink"
+date: "January 26, 2017"
+output: html_document
+status: process
+published: true
+layout: post
+excerpt_separator: <!--more-->
+tags: R hockey elo prediction scoring
+---
+
+```{r setup, include=FALSE}
+library(reshape2)
+knitr::opts_chunk$set(echo = TRUE)
+elo_data<-readRDS("./_data/basic_elo_data.RDS")
+nhl15<-readRDS("./_data/nhl15.RDS")
+nhl15actual<-readRDS("./_data/nhl15actual.RDS")
+set.seed(1)
+```
+
+On Twitter, there are many excellent hockey analytics folks. One in particular, [@IneffectiveMath](https://twitter.com/ineffectivemath), is worth following. Amongst other things, such as great visualizations of data, he's running a contest this year that is rating models on their season-long predictions, using the following scoring scheme: 
+
+<!--more-->
+ 
+> The score associated to a given estimate will be computed as the probability of drawing the actual result from a normal distribution with mean given by the estimated point total and standard deviation givin by the estimated uncertainty. The maximum possible score for a single team is 1, which can only be obtained by specifying the team's point total exactly with an uncertainty of 0 -- in this case you will score 0 for even the slightest deviation from your estimate. Specifying a larger uncertainty will help you capture some points even when your estimate is poor; specifying a smaller uncertianty will give you a larger score when your estimate is good. The overall score is the sum of the thirty team scores, so the maximum theoretical score is thirty. 
+
+Thus, the way to score a prediction is, at the end of the season, to sum up the `dnorm(x=ActualPoints, mean = Points, sd=PointsSD)`. This is vectorized, you can sub in a column of a data.frame and then get the `sum()`. 
+
+So, let's try it. 
+
+Having prepared a 2014-2015 schedule, and recorded the 2014-2015 season points for each team, we can run our Elo rating predictions through that method to see how they do. 
+
+We'll simulate a season using some more `R` type programming than past season predictors. We sample from the list `[0, 0.4, 0.6, 1]`, corresponding to an away win, away OT win, home OT win, and home win, with the probabilities based on pWin (of the home team winning) of `[1-pWin, 0.1-0.1*pWin, 0.1*pWin, pWin]`. This gives us about a 10% chance of going into OT, with the chances of a team in OT the same as in regular time. While this sometimes adds up to more than 1 (eg: `pWin = 1 --> odds = [0, 0, 0.1, 1]`), the `R` function `sample()` can scale probabilites if needed. 
+
+We'll vectorize the function to sample to make it easy to feed in a list of pWins, and get a matrix of samples back, easily repeated the number of times we want to simulate a season. 
+```{r}
+predictEloWins.vec<-Vectorize(FUN = function(pWin, n_sims){
+    return(sample(c(0,0.4, 0.6, 1), 
+                  size = n_sims, 
+                  replace = TRUE, 
+                  prob=c(1-pWin, 0.1-0.1*pWin, 0.1*pWin, pWin)))},
+    vectorize.args = 'pWin')
+```
+
+Similarly, we'll vectorize a formula to give us the odds of a home team win given the Elo rating difference between two teams: 
+```{r}
+predictEloResults.vec<-Vectorize(FUN = function(elo_diff, h_adv=0){
+    return(1/(1 + (10^(((-1*elo_diff)+h_adv)/400))))},
+    vectorize.args = 'elo_diff')
+```
+
+Finally, those two functions get put together with some data munging and compilation, and we get a predicted finish for each team after a certain number of sims.
+
+```{r} 
+predictSeasonElo<-function(elo_data, schedule, n_sims=10){
+    nhl_teams<-unique(c(as.character(schedule$Home), as.character(schedule$Visitor)))
+    start_date<-as.Date(head(schedule$Date, 1))
+    elo<-tail(elo_data[elo_data$Date < start_date,],1)
+    elo_long<-melt(elo, id = "Date", value.name = "Rating", variable.name = "Team", na.rm = TRUE)
+
+    schedule$EloDiff<-apply(schedule, 1, function(x) elo_long[elo_long$Team == make.names(x[2]),"Rating"]-elo_long[elo_long$Team == make.names(x[3]),"Rating"])
+
+    schedule$PHome<-predictEloResults.vec(schedule$EloDiff, h_adv = 0)
+
+    results <- matrix(predictEloWins.vec(schedule$PHome, n_sims), ncol=n_sims, byrow = TRUE)
+
+    team_performance<-matrix(NA, nrow=length(nhl_teams), ncol=n_sims * 3)
+    rownames(team_performance)<-make.names(nhl_teams)
+    for(i in 1:n_sims){
+        for(team in nhl_teams){
+            team_performance[make.names(team), i]<-sum(results[schedule$Home == team,i]>0.5) + sum(results[schedule$Visitor == team, i]<0.5)
+            team_performance[make.names(team), i+n_sims]<-sum(results[schedule$Home == team, i]==0.4)+sum(results[schedule$Visitor == team, i]==0.4)
+            team_performance[make.names(team), i+2*n_sims]<-2 * team_performance[make.names(team), i] + team_performance[make.names(team), i+n_sims]
+
+        }
+    }
+    team_results<-data.frame("Team"=nhl_teams)
+    team_results$WinsMax<-apply(team_performance[,1:n_sims], 1, max)
+    team_results$WinsMin<-apply(team_performance[,1:n_sims], 1, min)
+    team_results$Wins<-apply(team_performance[,1:n_sims], 1, mean)
+    team_results$WinsSD<-apply(team_performance[,1:n_sims], 1, sd)
+    team_results$OTLoss<-apply(team_performance[,(n_sims+1):(2*n_sims)], 1, mean)
+    team_results$OTLossMax<-apply(team_performance[,(n_sims+1):(2*n_sims)], 1, mean)
+    team_results$OTLossMin<-apply(team_performance[,(n_sims+1):(2*n_sims)], 1, mean)
+    team_results$OTLossSD<-apply(team_performance[,(n_sims+1):(2*n_sims)], 1, mean)
+    team_results$PointsMax<-apply(team_performance[,(2*n_sims+1):(3*n_sims)], 1, max)
+    team_results$PointsMin<-apply(team_performance[,(2*n_sims+1):(3*n_sims)], 1, min)
+    team_results$Points<-apply(team_performance[,(2*n_sims+1):(3*n_sims)], 1, mean)
+    team_results$PointsSD<-apply(team_performance[,(2*n_sims+1):(3*n_sims)], 1, sd)
+
+    return(team_results)
+}
+```
+
+
+Now, when this runs, we get a table of expected Wins, OT Losses, and Points for each team (mean, max, min, and sd). This gives us the information we need to be able to calculate a score for the season. 
+
+```{r} 
+results <- predictSeasonElo(elo_data, nhl15, 100)
+results
+```
+
+We can score it simply this way:
+
+```{r}
+results<-merge(results, nhl15actual)
+sum(dnorm(x=results$ActualPoints, mean = results$Points, sd=results$PointsSD))
+```
+
+Next time we'll optimize to this instead of by-game metrics, and see how we do.
+
