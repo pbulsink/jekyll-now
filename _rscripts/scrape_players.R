@@ -278,7 +278,7 @@ getPlayerStats <- function(player_list, sleep = 30) {
   goalie_stats_tables <- data.frame()
   player_meta_tables <- data.frame()
   plist <- player_list[player_list$BlnNHL == TRUE, ]
-  if (length(plist) == 0)
+  if (nrow(plist) == 0)
     return(NULL)
   pb <- txtProgressBar(min = 0, max = nrow(plist), initial = 0)
   for (player in c(1:nrow(plist))) {
@@ -335,8 +335,11 @@ scrapeByAlphabet <- function(player_list, letters_to_scrape = letters,
   for (letter in letters_to_scrape) {
     message(paste0("Getting Players with last name of ",
       toupper(letter), "."))
-    ps <- getPlayerStats(player_list[startsWith(player_list$URL,
-      paste0("/players/", letter)), ], ...)
+    plist <- player_list[startsWith(player_list$URL,
+                                    paste0("/players/", letter)), ]
+    if (nrow(plist) == 0)
+        next
+    ps <- getPlayerStats(plist, ...)
     saveRDS(ps, paste0(directory, "players_", letter, ".RDS"))
     Sys.sleep(letter_sleep)
   }
