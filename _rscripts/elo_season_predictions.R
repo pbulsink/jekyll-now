@@ -1,7 +1,9 @@
+source("./_rscripts/calculateEloRatings.R")
 library(reshape2)
+require(doParallel)
 
 predictSeasonElo<-function(elo_data, schedule, n_sims=10){
-    nhl_teams<-unique(c(as.character(schedule$Home), as.character(schedule$Visitor)))
+    nhl_teams<-unique(c(as.character(schedule$HomeTeam), as.character(schedule$AwayTeam)))
     start_date<-as.Date(head(schedule$Date, 1))
     elo<-tail(elo_data[elo_data$Date < start_date,],1)
     elo_long<-melt(elo, id = "Date", value.name = "Rating", variable.name = "Team", na.rm = TRUE)
@@ -50,3 +52,38 @@ scoreEloSeasonPredicted<-function(elo_data, schedule, actual_points, n_sims=10){
     return(sum(dnorm(x=d$ActualPoints, mean = d$Points, sd=d$PointsSD)))
 }
 
+eloSeasonPlotData<-function(nhl_data, nhl15, nhl15actual, nhl16, nhl16actual, n_sims){
+    colnames(nhl_data)<-c("Date","HomeTeam","AwayTeam","Result","Diff")
+    cl <- makeCluster(2, outfile="./stdout.log")
+    registerDoParallel(cl)
+    exportFuns<-c('seasonScoreElo','predictSeasonElo','scoreEloSeasonPredicted', 'predictEloResults.vec', 'predictEloWins.vec', 'calculateEloRatings', 'splitDates', 'scoreEloVar', 'seasonScore', 'calculateEloRatings', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults')
+    scores<-foreach(i=0:10, .export=exportFuns, .combine = 'c', .packages = c('reshape2')) %:% foreach(j=0:2) %dopar% seasonScoreElo(p=c(i, j), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data = nhl_data, nhl15 = nhl15, nhl15actual = nhl15actual, nhl16 = nhl16, nhl16actual = nhl16actual, n_sims = n_sims)
+
+    stopCluster(cl)
+
+    scores<-as.data.frame(apply(as.data.frame(do.call('rbind', scores)), 2, unlist))
+
+    return(scores)
+
+    #ggplot(multiScores, aes(x=kPrime, y=gammaK, z=multiLL6, fill=multiLL6)) + geom_tile() + coord_equal() + geom_contour(color = "white", alpha = 0.5) + scale_fill_distiller(palette="Spectral", na.value="white") + theme_bw()
+}
+
+seasonScoreElo<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data, nhl15, nhl15actual, nhl16, nhl16actual, n_sims){
+    #Calculate Elo by parameter
+    kPrime=p[1]
+    gammaK=p[2]
+    #regressStrength=p[3]
+    #homeAdv=p[4]
+    #newTeam=1500-4*p[5] # Thus, as p5 goes up, newteam ratings go down. Typically p[5] = 50, newTeam=1300
+    message(paste0("Calculating Elo with kPrime=",kPrime," gammaK=",gammaK," newTeam=",newTeam," regStrength=",regressStrength," homeAdv=",homeAdv))
+    elo<-calculateEloRatings(nhl_data, k=kPrime, gammaK = gammaK, new_teams = newTeam, regress_strength = regressStrength, home_adv = homeAdv, k_var = TRUE, meta=FALSE)
+
+    message("Calculating Score")
+    #compare season
+    score2015 <- scoreEloSeasonPredicted(elo_data = elo, schedule = nhl15, actual_points = nhl15actual, n_sims = n_sims)
+    score2016 <- scoreEloSeasonPredicted(elo_data = elo, schedule = nhl16, actual_points = nhl16actual, n_sims = n_sims)
+
+    message("Done Scoring")
+    #return scores
+    return(list('Score15' = score2015, 'Score16' = score2016))
+}
