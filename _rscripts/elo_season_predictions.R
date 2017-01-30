@@ -67,23 +67,34 @@ eloSeasonPlotData<-function(nhl_data, nhl14, nhl14actual, nhl15, nhl15actual, nh
     #ggplot(multiScores, aes(x=kPrime, y=gammaK, z=multiLL6, fill=multiLL6)) + geom_tile() + coord_equal() + geom_contour(color = "white", alpha = 0.5) + scale_fill_distiller(palette="Spectral", na.value="white") + theme_bw()
 }
 
-seasonScoreElo<-function(p=c('kPrime'=10, 'gammaK'=1), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data, nhl14, nhl14actual, nhl15, nhl15actual, nhl16, nhl16actual, n_sims){
+seasonScoreElo<-function(p=c('kPrime'=10, 'gammaK'=1, 'regressStrength'=3, 'homeAdv'=0, 'newTeam'=1300), nhl_data, nhl14, nhl14actual, nhl15, nhl15actual, nhl16, nhl16actual, n_sims){
+    set.seed(1)
+
     #Calculate Elo by parameter
     kPrime=p[1]
     gammaK=p[2]
-    #regressStrength=p[3]
-    #homeAdv=p[4]
-    #newTeam=1500-4*p[5] # Thus, as p5 goes up, newteam ratings go down. Typically p[5] = 50, newTeam=1300
+    regressStrength=p[3]
+    homeAdv=p[4]
+    newTeam=p[5] # Thus, as p5 goes up, newteam ratings go down. Typically p[5] = 50, newTeam=1300
     message(paste0("Calculating Elo with kPrime=",kPrime," gammaK=",gammaK," newTeam=",newTeam," regStrength=",regressStrength," homeAdv=",homeAdv))
     elo<-calculateEloRatings(nhl_data, k=kPrime, gammaK = gammaK, new_teams = newTeam, regress_strength = regressStrength, home_adv = homeAdv, k_var = TRUE, meta=FALSE)$Ratings
 
     message("Calculating Score")
     #compare season
-    score2014 <- scoreEloSeasonPredicted(elo_data = elo, schedule = nhl14, actual_points = nhl14actual, n_sims = n_sims)
+    set.seed(1)
+    score2014 < scoreEloSeasonPredicted(elo_data = elo, schedule = nhl14, actual_points = nhl14actual, n_sims = n_sims)
+    set.seed(1)
     score2015 <- scoreEloSeasonPredicted(elo_data = elo, schedule = nhl15, actual_points = nhl15actual, n_sims = n_sims)
+    set.seed(1)
     score2016 <- scoreEloSeasonPredicted(elo_data = elo, schedule = nhl16, actual_points = nhl16actual, n_sims = n_sims)
 
-    message("Done Scoring")
+    score<-mean(c(score2014,score2015, score2016))-sd(c(score2014,score2015, score2016))
+    message(paste0("Score: ", score))
+    #message("Done Scoring")
     #return scores
-    return(list('Score14' = score2014, 'Score15' = score2015, 'Score16' = score2016, 'gammaK'=gammaK, 'kPrime'=kPrime))
+    #return(list('Score14' = score2014, 'Score15' = score2015, 'Score16' = score2016, 'gammaK'=gammaK, 'kPrime'=kPrime))
+    return(score)
 }
+
+require(optimx)
+optimx(par = c(6,1,3,35,1300), fn = seasonScoreElo, lower = c(1,0.1,1,0, 1000), upper=c(20, 5, 10, 100, 1500), control = list(all.methods = TRUE, follow.on = TRUE, save.failures = TRUE, maximize = TRUE, parscale=c(10,1,100,1000)), nhl_data = nhl_data, nhl14 = nhl14, nhl14actual = nhl14actual, nhl15 = nhl15, nhl15actual = nhl15actual, nhl16 = nhl16, nhl16actual = nhl16actual, n_sims = 10000)
