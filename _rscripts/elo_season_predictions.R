@@ -58,7 +58,8 @@ eloSeasonPlotData<-function(nhl_data, nhl14, nhl14actual, nhl15, nhl15actual, nh
     cl <- makeCluster(3, outfile="./stdout.log")
     registerDoParallel(cl)
     exportFuns<-c('seasonScoreElo','predictSeasonElo','scoreEloSeasonPredicted', 'predictEloResults.vec', 'predictEloWins.vec', 'calculateEloRatings', 'splitDates', 'scoreEloVar', 'seasonScore', 'calculateEloRatings', '.eloSeason', 'predictEloResult', 'newRankings', 'variableK', 'getPredictedResults')
-    scores<-foreach(i=0:20, .export=exportFuns, .combine = 'c', .packages = c('reshape2')) %:% foreach(j=1:3) %dopar% seasonScoreElo(p=c(i, j), regressStrength=3, homeAdv=0, newTeam=1300, nhl_data = nhl_data, nhl14 = nhl14, nhl14actual = nhl14actual, nhl15 = nhl15, nhl15actual = nhl15actual, nhl16 = nhl16, nhl16actual = nhl16actual, n_sims = n_sims)
+    #
+    scores<-foreach(i=2:12, .export=exportFuns, .combine = 'c', .packages = c('reshape2')) %:% foreach(j=1:3) %:% foreach(k=1:6) %:% foreach(l=seq(from=0,to=100,by=10)) %:% foreach(m=seq(from=1100,to=1500,by=50)) %dopar% seasonScoreElo(p=c(i, j, k, l, m), nhl_data = nhl_data, nhl14 = nhl14, nhl14actual = nhl14actual, nhl15 = nhl15, nhl15actual = nhl15actual, nhl16 = nhl16, nhl16actual = nhl16actual, n_sims = n_sims)
 
     stopCluster(cl)
 
@@ -96,5 +97,5 @@ seasonScoreElo<-function(p=c('kPrime'=10, 'gammaK'=1, 'regressStrength'=3, 'home
     return(score)
 }
 
-require(optimx)
-optimx(par = c(6,1,3,35,1300), fn = seasonScoreElo, lower = c(1,0.1,1,0, 1000), upper=c(20, 5, 10, 100, 1500), control = list(all.methods = TRUE, follow.on = TRUE, save.failures = TRUE, maximize = TRUE, parscale=c(10,1,100,1000)), nhl_data = nhl_data, nhl14 = nhl14, nhl14actual = nhl14actual, nhl15 = nhl15, nhl15actual = nhl15actual, nhl16 = nhl16, nhl16actual = nhl16actual, n_sims = 10000)
+#require(optimx)
+#optimx(par = c(6,1,3,35,1300), fn = seasonScoreElo, lower = c(1,0.1,1,0, 1000), upper=c(20, 5, 10, 100, 1500), control = list(all.methods = TRUE, follow.on = TRUE, save.failures = TRUE, maximize = TRUE, parscale=c(10,1,1,100,1000)), nhl_data = nhl_data, nhl14 = nhl14, nhl14actual = nhl14actual, nhl15 = nhl15, nhl15actual = nhl15actual, nhl16 = nhl16, nhl16actual = nhl16actual, n_sims = 10000)
