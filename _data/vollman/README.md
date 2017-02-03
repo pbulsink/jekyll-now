@@ -1,0 +1,1 @@
+Data in this folder comes from http://www.hockeyabstract.com and is compiled by Robert Vollman. All credit for usage should be attributed to him. 
