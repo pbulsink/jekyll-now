@@ -63,6 +63,8 @@ eloSeasonPlotData<-function(nhl_data, nhl14, nhl14actual, nhl15, nhl15actual, nh
 
     stopCluster(cl)
 
+    scores<-as.data.frame(apply(as.data.frame(do.call('rbind', scores)), 2, unlist))
+
     return(scores)
 
     #ggplot(multiScores, aes(x=kPrime, y=gammaK, z=multiLL6, fill=multiLL6)) + geom_tile() + coord_equal() + geom_contour(color = "white", alpha = 0.5) + scale_fill_distiller(palette="Spectral", na.value="white") + theme_bw()
@@ -93,8 +95,8 @@ seasonScoreElo<-function(p=c('kPrime'=10, 'gammaK'=1, 'regressStrength'=3, 'home
     message(paste0("Score: ", score))
     #message("Done Scoring")
     #return scores
-    #return(list('Score14' = score2014, 'Score15' = score2015, 'Score16' = score2016, 'gammaK'=gammaK, 'kPrime'=kPrime))
-    return(score)
+    return(list('Score' = score, 'gammaK'=gammaK, 'kPrime'=kPrime, 'regressStrength'=regressStrength, 'homeAdv'=homeAdv, 'newTeam'=newTeam))
+    #return(score)
 }
 
 #require(optimx)
