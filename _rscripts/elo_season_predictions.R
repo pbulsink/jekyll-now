@@ -63,7 +63,7 @@ eloSeasonPlotData<-function(nhl_data, nhl14, nhl14actual, nhl15, nhl15actual, nh
 
     stopCluster(cl)
 
-    scores<-as.data.frame(apply(as.data.frame(do.call('rbind', scores)), 2, unlist))
+    #scores<-as.data.frame(apply(as.data.frame(do.call('rbind', scores)), 2, unlist))
 
     return(scores)
 
@@ -95,7 +95,7 @@ seasonScoreElo<-function(p=c('kPrime'=10, 'gammaK'=1, 'regressStrength'=3, 'home
     message(paste0("Score: ", score))
     #message("Done Scoring")
     #return scores
-    return(list('Score' = score, 'gammaK'=gammaK, 'kPrime'=kPrime, 'regressStrength'=regressStrength, 'homeAdv'=homeAdv, 'newTeam'=newTeam))
+    return(list('Score'=score, 'gammaK'=gammaK, 'kPrime'=kPrime, 'regressStrength'=regressStrength, 'homeAdv'=homeAdv, 'newTeam'=newTeam))
     #return(score)
 }
 
