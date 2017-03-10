@@ -7,6 +7,7 @@ status: publish
 published: true
 layout: post
 excerpt_separator: <!--more-->
+maps: true
 tags: R hockey maps arenas
 ---
  
@@ -40,10 +41,11 @@ arenas$lng<-as.numeric(arenas$lng)
 arenas$label<-paste0(arenas$team, ' - ', arenas$name)
 {% endhighlight %}
  
-With the data ready, we can build our map. It's quite simple:
+With the data ready, we can build our map. It's quite simple. 
 
 {% highlight r %}
 library(leaflet)
+library(webshot)
 mymap <- arenas %>%
     leaflet() %>%
     addTiles() %>%
@@ -62,9 +64,8 @@ mymap <- arenas %>%
 mymap
 {% endhighlight %}
 
-
-
-{% highlight text %}
-## Error in loadNamespace(name): there is no package called 'webshot'
-{% endhighlight %}
+![plot of chunk leafletmap](/images/leafletmap-1.png)
  
+I'll note, however, that getting it to show on github pages is not easy. So this is just an iframe of it hosted on RPubs.
+ 
+<iframe width="700" height="500" src="http://rpubs.com/pbulsink/arenamap">&nbsp;</iframe>
