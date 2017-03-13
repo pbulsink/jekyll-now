@@ -13,7 +13,7 @@ tags: R hockey maps arenas
  
 
  
-As part of the Data Science Specialization offered by John Hopkins through Coursera, I have a project to create an 'interactive map' in a rmarkdown post. I figured I should map where the NHL stadiums are.
+As part of the [Data Science Specialization offered by John Hopkins through Coursera](https://www.coursera.org/specializations/jhu-data-science), I have a project to create an 'interactive map' in a rmarkdown post. I figured I should map where the NHL stadiums are.
  
 <!--more-->
  
@@ -66,6 +66,4 @@ mymap
 
 ![plot of chunk leafletmap](/images/leafletmap-1.png)
  
-I'll note, however, that getting it to show on github pages is not easy. So this is just an iframe of it hosted on RPubs.
- 
-<iframe width="700" height="500" src="http://rpubs.com/pbulsink/arenamap">&nbsp;</iframe>
+I'll note, however, that getting leaflet maps to show on github pages is not easy. So you can view it on RPubs here: [http://rpubs.com/pbulsink/arenamap](http://rpubs.com/pbulsink/arenamap).
