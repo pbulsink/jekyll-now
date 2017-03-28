@@ -19,6 +19,8 @@ I've been playing around with [Travelling Salesperson Problems (TSP)](https://en
 
 Concorde is available as prebuilt binaries for many platforms, but not for osX. For Macs, it has to be downloaded and built from the source. It can be tough to build it on osX, but after much digging I've found some instructions. It required the Way Back Machine to dig it out of some archives, so I'm reposting it here for posterity. 
 
+<!--more-->
+
 It comes from [http://davidsjohnson.net/TSPcourse/mac-install-concorde.txt](http://davidsjohnson.net/TSPcourse/mac-install-concorde.txt), with only minor modifications to update the tsp example url.
 
 This works on osX Sierra (10.12.3) with XCode 8.3, gcc 4.8.0, and clang-800.0.42.1. 
