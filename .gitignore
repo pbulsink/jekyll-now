@@ -22,3 +22,5 @@ stdout.log
 *.history
 
 .RData
+
+_data/apikey.txt
