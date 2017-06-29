@@ -17,7 +17,7 @@ Those of you who are interested in machine learning will likely have heard of Go
  
 <!--more-->
  
-##Installation
+## Installation 
  
 To install tensorflow, ensure you have a working copy of Python available. They recommend [Anaconda](https://www.continuum.io/downloads), but any distribution should work.
  
@@ -50,7 +50,7 @@ sess$run(hello)
  
 There is a GPU version of TensorFlow available, if you have NVIDIA graphics cards. More information on this and other installation options are available on the [tensorflow site](https://tensorflow.rstudio.com/installation.html). 
  
-##Example
+## Example
  
 We'll mirror the work done [in this blog post](https://medium.com/towards-data-science/lstm-by-example-using-tensorflow-feb0c1968537) from *Towards Data Science* and Rowel Atienza, as it's a good simple example. The post contains a number of graphics and a very good explanation of the model itself, but in short we are using an Long Short Term Memory (LSTM) model of a recurrant neural network (RNN) for next word prediction. 
  
@@ -61,7 +61,7 @@ The text used in the post and here is one of Aesop's fables, cleaned and shown b
 text<-"long ago , the mice had a general council to consider what measures they could take to outwit their common enemy , the cat . some said this , and some said that but at last a young mouse got up and said he had a proposal to make , which he thought would meet the case . you will all agree , said he , that our chief danger consists in the sly and treacherous manner in which the enemy approaches us . now , if we could receive some signal of her approach , we could easily escape from her . i venture , therefore , to propose that a small bell be procured , and attached by a ribbon round the neck of the cat . by this means we should always know when she was about , and could easily retire while she was in the neighbourhood . this proposal met with general applause , until an old mouse got up and said that is all very well , but who is to bell the cat ? the mice looked at one another and nobody spoke . then the old mouse said it is easy to propose impossible remedies ."
 {% endhighlight %}
  
-###Text Preprocessing
+### Text Preprocessing
  
 The first thing to do is convert the text to a form that the model can read. Models can only operate on numerical systems, so each word and punctuation needs to be swapped with a number, producing a list (vector) of numbers instead of words representing the text. The list of words and their number will be referred to as a dictionary. We'll sort it to make it easier to comprehend as a regular paper dictionary.
  
@@ -78,7 +78,7 @@ for(i in 1:length(dictionary)){
  
 Now, we can see that what was originally 'long ago , the mice had a general council to ...' is now coded as '49, 6, 1, 86, 57, 38, 4, 36, 29, 93'. While that's less human readable, it's easier for the model to understand.
  
-###Setting up the RNN
+### Setting up the RNN
 The first thing to do is set up the neural network function iteself. Then, similar to the blog post, we'll initialize some variables and parameters:
 
 {% highlight r %}
@@ -128,7 +128,7 @@ correct_pred <- tf$equal(tf$argmax(pred, 1L), tf$argmax(y, 1L))
 accuracy <- tf$reduce_mean(tf$cast(correct_pred, tf$float32))
 {% endhighlight %}
  
-##Train the Model
+## Train the Model
  
 With all of our variables and parameters prepared, we can initialize tensor flow, then start a Session.
  
@@ -200,7 +200,7 @@ while(step < training_iters){
 {% endhighlight %}
  
  
-##Play with the model
+## Play with the model
  
 What can we do with this? We can use the trained model to generate text for us. This generation might seem familiar to the supplied text, or even repeat it, because of the small amount of input data. However, with a larger input, we could get some really novel speech patterns out.
  
@@ -239,4 +239,4 @@ paste(sent_w, collapse = " ")
 {% highlight text %}
 ## [1] "mouse mouse mouse it up the and treacherous manner in which the enemy approaches us . now , if we could receive some signal of her approach , we could easily escape from"
 {% endhighlight %}
-Obviously, the story is just recycled to us, so we're overfit to the data. Next post we'll look at a larger corpus of text as a starting point.
+Obviously, the story is just recycled to us; we're overfit to the data. Next post we'll look at a larger corpus of text as a starting point.
