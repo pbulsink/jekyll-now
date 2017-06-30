@@ -11,16 +11,10 @@ package.json
 .Rproj.user
 .Rhistory
 nhlr-data
-
 *.dcf
-
 cache/*
-
 _data/NHL.MinuteData.csv
 stdout.log
-
 *.history
-
 .RData
-
 _data/apikey.txt

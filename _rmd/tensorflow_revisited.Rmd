@@ -1,0 +1,237 @@
+---
+title: "TensorFlow Revisited"
+author: "Phil Bulsink"
+date: "2017-06-30"
+output: html_document
+status: process
+published: true
+layout: post
+excerpt_separator: <!--more-->
+maps: true
+tags: R NLP RNN LSTM TensorFlow
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tensorflow)
+```
+
+[Previously](https://pbulsink.github.io/blog/2017-06-21/tensorflow_intro.html), we visited TensorFlow and R and used it to (overfit) model a bit of language. Let's go back and work on a larger portion of text with a better model, to see what we can do to 'genericize' the predictions.
+
+This time, we'll model our code on the tensorflow example discussed in their [tutorials](https://www.tensorflow.org/tutorials/recurrent), with the code hosted on their [GitHub](https://github.com/tensorflow/models/blob/master/tutorials/rnn/ptb). 
+
+<!--more-->
+
+As with them, we'll use the [Penn Tree Bank](https://catalog.ldc.upenn.edu/ldc99t42) dataset, particularly the files in the `data/` folder. As does the [`reader.py`](https://github.com/tensorflow/models/blob/master/tutorials/rnn/ptb/reader.py) script, we'll convert each file's text to a numeric representation with a dictionary lookup. This will just be a formalized set of what we demonstrated last time, so look at the code for this post on [GitHub](https://github.com/pbulsink/pbulsink.github.io/tree/master/_rmd_published/rensorflow_revisited.Rmd) to see what's happening. 
+
+```{r dataprep, include=FALSE, cache=TRUE}
+integerize<-function(text, dictionary){
+    text_v <- rep(0, length(text))
+    for(i in 1:length(dictionary)){
+        text_v[which(text == dictionary[[i]])]<-i
+    }   
+    return(text_v)
+}
+
+prepData<-function(datapath="./_data/"){
+    
+    ptb_test<-readLines(paste0(datapath, "ptb.test.txt"))
+    ptb_train<-readLines(paste0(datapath, "ptb.train.txt"))
+    ptb_valid<-readLines(paste0(datapath, "ptb.valid.txt"))
+    
+    ptb_test<-unlist(strsplit(paste(ptb_test, collapse="<eos>"), " "))
+    ptb_train<-unlist(strsplit(paste(ptb_train, collapse="<eos>"), " "))
+    ptb_valid<-unlist(strsplit(paste(ptb_valid, collapse="<eos>"), " "))
+    
+    vocab<-unique(ptb_test)
+    
+    test_v<-integerize(ptb_test, vocab)
+    train_v<-integerize(ptb_train, vocab)
+    valid_v<-integerize(ptb_valid, vocab)
+    
+    return(list(test_v=test_v, train_v=train_v, valid_v=valid_v, vocab=vocab))
+}
+
+data<-prepData("../_data/")
+test_v<-data$test_v
+train_v<-data$train_v
+valid_v<-data$valid_v
+vocab<-data$vocab
+rm(data)
+```
+
+We'll also set up a function to split data for feeding into our TensorFlow model, as the example does. This slices base data into pieces and returns those chunks for us.
+
+```{r producer}
+tensorProducer<-function(raw_data, batch_size, num_steps, name=NULL){
+    with(tf$name_scope(name, "tensorProducer", list(raw_data, batch_size, num_steps)), {
+         raw_data<-tf$convert_to_tensor(raw_data, dtype=tf$int32, name='raw_data')
+         data_len<-tf$size(raw_data)
+         batch_len<-data_len/batch_size
+         data<-tf$reshape(raw_data[1:batch_size*batch_len], shape(batch_size, batch_len))
+         epoch_size<-(batch_len-1) %/% num_steps
+         assert<-tf$assert_positive(epoch_size, "Epoch size is 0, decrease batch_size or num_steps")
+         
+         with(tf$control_dependencies(assert), epoch_size = tf$identity(epoch_size, name='epoch_size'))
+         
+         i<-tf$train$range_input_producer(epoch_size, shuffle=FALSE)$dequeue()
+         x<-tf$strided_slice(data, c(0:(i*num_steps)), c(batch_size:((i+1)*num_steps)))
+         x$set_shape(shape(batch_size, num_steps))
+         y<-tf$strided_slice(data, c(0:(i*(num_steps+1))), c(batch_size:((i+1)*(num_steps+1))))
+         y$set_shape(shape(batch_size, num_steps))
+         })
+    return(list(x,y))
+}
+```
+
+As does the example, we'll set up some auto model parameter sets to simplify operation. This is a volumnous bit of code, so again, check the github link for this post to see what's happening.
+```{r model_parameters, include=FALSE}
+paramChooser<-function(model_size = 'small'){
+    if(model_size == 'large'){
+        init_scale <- 0.04
+        learning_rate <- 1.0
+        max_grad_norm <- 10
+        num_layers <- 2
+        num_steps <- 35
+        hidden_size <- 1500
+        forget_bias<-0
+        max_epoch <- 14
+        max_max_epoch <- 55
+        keep_prob <- 0.35
+        lr_decay <- 1/1.15
+        batch_size <- 20
+        vocab_size <- 10000
+    } else if (model_size == 'medium'){
+        init_scale <- 0.05
+        learning_rate <- 1.0
+        max_grad_norm <- 5
+        num_layers <- 2
+        num_steps <- 35
+        hidden_size <- 650
+        forget_bias<-0
+        max_epoch <- 6
+        max_max_epoch <- 39
+        keep_prob <- 0.5
+        lr_decay <- 0.8
+        batch_size <- 20
+        vocab_size <- 10000
+    } else if (model_size == 'test'){
+        init_scale <- 0.1
+        learning_rate <- 1.0
+        max_grad_norm <- 1
+        num_layers <- 1
+        num_steps <- 2
+        hidden_size <- 2
+        forget_bias<-0
+        max_epoch <- 1
+        max_max_epoch <- 1
+        keep_prob <- 1.0
+        lr_decay <- 0.5
+        batch_size <- 20
+        vocab_size <- 10000
+    } else { # default to small
+        if (model_size != 'small'){
+            message('Unknown model_size, defaulting to "small".')
+        }
+        init_scale <- 0.1
+        learning_rate <- 1.0
+        max_grad_norm <- 5
+        num_layers <- 2
+        num_steps <- 20
+        hidden_size <- 200
+        forget_bias<-0
+        max_epoch <- 4
+        max_max_epoch <- 13
+        keep_prob <- 1.0
+        lr_decay <- 0.5
+        batch_size <- 20
+        vocab_size <- 10000
+    }
+    return(list('init_scale'=init_scale, 'learning_rate'=learning_rate, 'max_grad_norm'=max_grad_norm, 
+                'num_layers'=num_layers, 'num_steps'=num_steps, 'hidden_size'=hidden_size, 
+                'forget_bias'=forget_bias, 'max_epoch'=max_epoch, 'max_max_epoch'=max_max_epoch, 
+                'keep_prob'=keep_prob, 'lr_decay'=lr_decay, 'batch_size'=batch_size, 'vocab_size'=vocab_size))
+}
+```
+
+Building the LSTM cell is **much** more involved for this model. 
+
+```{r lstm_cell}
+RNN<-function(data, params, is_training){
+    batch_size<-params$batch_size
+    keep_prob<-params$keep_prob
+    vocab_size<-params$vocab_size
+    size<-params$hidden_size
+    num_steps<-params$num_steps
+    max_grad_norm<-params$max_grad_norm
+    
+    makeCell<-function(params, is_training){
+        num_layers<-params$num_layers
+        keep_prob<-params$keep_prob
+        
+        LSTMCell<-function(params){
+            size<-params$hidden_size
+            forget_bias<-params$forget_bias
+            
+            lstm<-tf$contrib$rnn$BasicLSTMCell(size, forget_bias=forget_bias, state_is_tuple=TRUE, reuse=tf$get_variable_scope()$reuse)
+            return(lstm)
+        }    
+        
+        ATTNCell<-LSTMCell
+        
+        if((is_training) && (keep_prob > 1)){
+            ATTNCell<-function(params){
+                keep_prob<-keep_prob
+                attn<-tf$contrib$rnn$DropoutWrapper(LSTMCell(), output_keep_prob=keep_prob)
+                return(attn)
+            }
+        }
+        
+        cell<-tf$contrib$rnn$MultiRNNCell(rep(ATTMCell(), num_layers), state_is_tuple=TRUE)
+    
+        return(cell)
+    }
+    
+    CELL<-makeCell(params, is_training = TRUE)
+    initial_state<-CELL$zero_state(batch_size, tf$float32)
+    
+    embedding<-tf$get_variable('embedding', shape(vocab_size, size), dtype=tf$float32)
+    inputs <- tf$nn$embedding_lookup(embedding, data)
+    if(is_training && keep_prob < 1){
+        inputs <- tf$nn$dropout(inputs, keep_prob)
+    }
+    
+    inputs <-  tf$unstack(inputs, num=num_steps, axis=1L)  
+    
+    outputs <- tf$contrib$rnn$static_rnn(CELL, inputs, initial_state)
+    outputs <- outputs
+    
+    output<-tf$reshape(tf$stack(axis=1, values=outputs[[1]])[[n_input]])  # tf.reshape(tf.stack(axis=1, values=outputs), [-1, size])
+    
+    weights<-tf$get_variable('weights', shape(size, vocab_size), tf$float32)
+    biases <-tf$get_variable('biases', shape(1, vocab_size), tf$float32)
+    logits<-tf$matmul(output, weights)+biases
+    
+    loss<-tf$contrib$seq2seq$sequence_loss(logits, data$actuals, tf$ones(shape(batch_size, num_steps), average_across_timesteps=FALSE, average_across_batch=TRUE))
+    
+    cost<-tf$reduce_sum(loss)
+    state<-outputs[[2]]
+    
+    return(list('cost'=cost, 'output'=output))
+    
+}
+
+
+    #############################################################################################
+    x <- tf$reshape(x, c(-1L, n_input))
+    x <- tf$split(x, n_input, 1L)
+  
+    rnn_cell<-tf$nn$rnn_cell$MultiRNNCell(list(tf$nn$rnn_cell$BasicLSTMCell(n_hidden), tf$nn$rnn_cell$BasicLSTMCell(n_hidden)))
+  
+    outputs<-tf$nn$static_rnn(cell = rnn_cell, inputs = x, dtype = tf$float32)
+  
+    return(tf$matmul(outputs[[1]][[n_input]], weights) + biases)
+
+
+```
+
