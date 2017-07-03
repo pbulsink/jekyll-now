@@ -13,6 +13,7 @@ tags: R NLP RNN LSTM TensorFlow
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(R6)
 library(tensorflow)
 ```
 
@@ -64,22 +65,32 @@ We'll also set up a function to split data for feeding into our TensorFlow model
 
 ```{r producer}
 tensorProducer<-function(raw_data, batch_size, num_steps, name=NULL){
+    batch_size<-as.integer(batch_size)
+    num_steps<-as.integer(num_steps)
+    raw_data<-as.integer(raw_data)
+    sess<-tf$Session()
+    
     with(tf$name_scope(name, "tensorProducer", list(raw_data, batch_size, num_steps)), {
-         raw_data<-tf$convert_to_tensor(raw_data, dtype=tf$int32, name='raw_data')
-         data_len<-tf$size(raw_data)
-         batch_len<-data_len/batch_size
-         data<-tf$reshape(raw_data[1:batch_size*batch_len], shape(batch_size, batch_len))
-         epoch_size<-(batch_len-1) %/% num_steps
-         assert<-tf$assert_positive(epoch_size, "Epoch size is 0, decrease batch_size or num_steps")
-         
-         with(tf$control_dependencies(assert), epoch_size = tf$identity(epoch_size, name='epoch_size'))
-         
-         i<-tf$train$range_input_producer(epoch_size, shuffle=FALSE)$dequeue()
-         x<-tf$strided_slice(data, c(0:(i*num_steps)), c(batch_size:((i+1)*num_steps)))
-         x$set_shape(shape(batch_size, num_steps))
-         y<-tf$strided_slice(data, c(0:(i*(num_steps+1))), c(batch_size:((i+1)*(num_steps+1))))
-         y$set_shape(shape(batch_size, num_steps))
-         })
+        raw_data<-tf$convert_to_tensor(raw_data, dtype=tf$int32, name='raw_data')
+        data_len<-tf$size(raw_data, out_type = tf$int32)
+        batch_len<-data_len/batch_size
+        batch_len<-tf$to_int32(batch_len)
+        message(paste0(batch_len, ' = batch_len'))
+        data<-tf$reshape(raw_data[0L:(sess$run(batch_len * batch_size)-1L)], shape(batch_size, sess$run(batch_len)))
+        message(data)
+        epoch_size<-as.integer((sess$run(batch_len)-1L) %/% num_steps)
+        
+        if(!epoch_size>0){
+            stop("epoch_size == 0, decrease batch_size or num_steps")
+        }
+        
+        epoch_size = tf$identity(epoch_size, name='epoch_size')
+        i<-tf$train$range_input_producer(epoch_size, shuffle=FALSE)$dequeue()
+        x<-tf$strided_slice(data, list(0L,(i*num_steps)), list(batch_size,((i+1L)*num_steps)))
+        x$set_shape(shape(batch_size, num_steps))
+        y<-tf$strided_slice(data, list(0L,(i*(num_steps+1L))), list(batch_size,((i+1L)*(num_steps+1L))))
+        y$set_shape(shape(batch_size, num_steps))
+        })
     return(list(x,y))
 }
 ```
@@ -154,84 +165,205 @@ paramChooser<-function(model_size = 'small'){
 }
 ```
 
-Building the LSTM cell is **much** more involved for this model. 
+Building the LSTM cell is **much** more involved for this model. I'll be using an [`R6`](https://cran.r-project.org/package=R6) style object to help mirror what's happening in the code. `R6` is one of a few ways of doing object oriented programming in R, and my favourite (although I haven't done a ton of work with any of them).
 
-```{r lstm_cell}
-RNN<-function(data, params, is_training){
-    batch_size<-params$batch_size
-    keep_prob<-params$keep_prob
-    vocab_size<-params$vocab_size
-    size<-params$hidden_size
-    num_steps<-params$num_steps
-    max_grad_norm<-params$max_grad_norm
-    
-    makeCell<-function(params, is_training){
-        num_layers<-params$num_layers
-        keep_prob<-params$keep_prob
+```{r model_object}
+library(R6)
+
+Model<-R6Class('Model', 
+    public = list(
+        batch_size = NULL,
+        epoch_size=NULL,
+        forget_bias = NULL,
+        hidden_size = NULL,
+        init_scale = NULL,
+        input=NULL,
+        is_training = NULL,
+        keep_prob = NULL,
+        learning_rate = NULL,
+        lr_decay = NULL,
+        max_epoch = NULL,
+        max_grad_norm = NULL,
+        max_max_epoch = NULL,
+        num_layers = NULL,
+        num_steps = NULL,
+        outputs=NULL,
+        output=NULL,
+        params_type=NULL,
+        vocab_size = NULL,
         
-        LSTMCell<-function(params){
-            size<-params$hidden_size
-            forget_bias<-params$forget_bias
-            
-            lstm<-tf$contrib$rnn$BasicLSTMCell(size, forget_bias=forget_bias, state_is_tuple=TRUE, reuse=tf$get_variable_scope()$reuse)
-            return(lstm)
-        }    
-        
-        ATTNCell<-LSTMCell
-        
-        if((is_training) && (keep_prob > 1)){
-            ATTNCell<-function(params){
-                keep_prob<-keep_prob
-                attn<-tf$contrib$rnn$DropoutWrapper(LSTMCell(), output_keep_prob=keep_prob)
-                return(attn)
+        initialize = function(is_training, params_type, inputs){
+            private$unpack_params(paramChooser(params_type))
+            self$params_type <- params_type
+            self$is_training <- is_training
+            self$input <- inputs
+            cell<-private$make_cell()
+            private$initial_state <- cell$zero_state(self$batch_size, tf$float32)
+            embedding <- tf$get_variable('embedding', shape(self$vocab_size, self$hidden_size), dtype=tf$float32)
+            private$x <- tf$nn$embedding_lookup(embedding, self$input$input_data)
+            private$y <- self$input$targets
+            if(self$is_training && self$keep_prob < 1){
+                private$x <- tf$nn$dropout(private$x, self$keep_prob)
             }
+            private$x <- tf$unstack(private$x, num=self$num_steps, axis=1L) 
+            outputs <- tf$contrib$rnn$static_rnn(cell, private$x, private$initial_state)
+            self$output <- tf$reshape(tf$stack(axis=1, values=outputs[[1]])[[self$n_input]])  # tf.reshape(tf.stack(axis=1, values=outputs), [-1, size])
+    
+            weights <- tf$get_variable('weights', shape(self$hidden_size, self$vocab_size), tf$float32)
+            biases <- tf$get_variable('biases', shape(1, self$vocab_size), tf$float32)
+            logits <- tf$matmul(self$output, weights) + biases
+            
+            loss<-tf$contrib$seq2seq$sequence_loss(logits, private$y, 
+                                                   tf$ones(shape(batch_size, num_steps), 
+                                                           average_across_timesteps=FALSE, average_across_batch=TRUE))
+            private$cost<-tf$reduce_sum(loss)
+            private$final_state<-outputs[[2]]
+            
+            if(self$is_training){
+                private$lr = tf$Variable(0.0, trainable=FALSE)
+                tvars = tf$trainable_variables()
+                grads = tf$clip_by_global_norm(tf$gradients(private$cost, tvars),self$max_grad_norm)[[1]]
+                optimizer = tf$train$GradientDescentOptimizer(private$lr)
+                private$train_op = optimizer$apply_gradients(
+                    Map(function(x,y) c(x,y), grads, tvars), #  zip(grads, tvars),
+                    global_step=tf$contrib$framework$get_or_create_global_step())
+            }
+        },
+        assign_lr=function(session, lr_value){
+            new_lr<-tf$placeholder(tf$float32, shape(NULL), name="new_learning_rate")
+            lr_update<-tf$assign(private$lr, new_lr)
+            session$run(lr_update, feed_dict=dict(new_lr = lr_value))
+        },
+        get_lr=function(){
+            return(private$lr)
+        },
+        get_train_op=function(){
+            return(private$train_op)
+        },
+        get_final_state=function(){
+            return(private$final_state)
+        },
+        get_inital_state=function(){
+            return(private$initial_state)
+        },
+        get_cost=function(){
+            return(private$cost)
+        },
+        get_input=function(){
+            return(list(x=private$x, y=private$y))
         }
+    ),
+    private = list(
+        lr=NULL,
+        train_op=NULL,
+        initial_state=NULL,
+        final_state=NULL,
+        cost=NULL,
+        x=NULL,
+        y=NULL,
         
-        cell<-tf$contrib$rnn$MultiRNNCell(rep(ATTMCell(), num_layers), state_is_tuple=TRUE)
-    
-        return(cell)
-    }
-    
-    CELL<-makeCell(params, is_training = TRUE)
-    initial_state<-CELL$zero_state(batch_size, tf$float32)
-    
-    embedding<-tf$get_variable('embedding', shape(vocab_size, size), dtype=tf$float32)
-    inputs <- tf$nn$embedding_lookup(embedding, data)
-    if(is_training && keep_prob < 1){
-        inputs <- tf$nn$dropout(inputs, keep_prob)
-    }
-    
-    inputs <-  tf$unstack(inputs, num=num_steps, axis=1L)  
-    
-    outputs <- tf$contrib$rnn$static_rnn(CELL, inputs, initial_state)
-    outputs <- outputs
-    
-    output<-tf$reshape(tf$stack(axis=1, values=outputs[[1]])[[n_input]])  # tf.reshape(tf.stack(axis=1, values=outputs), [-1, size])
-    
-    weights<-tf$get_variable('weights', shape(size, vocab_size), tf$float32)
-    biases <-tf$get_variable('biases', shape(1, vocab_size), tf$float32)
-    logits<-tf$matmul(output, weights)+biases
-    
-    loss<-tf$contrib$seq2seq$sequence_loss(logits, data$actuals, tf$ones(shape(batch_size, num_steps), average_across_timesteps=FALSE, average_across_batch=TRUE))
-    
-    cost<-tf$reduce_sum(loss)
-    state<-outputs[[2]]
-    
-    return(list('cost'=cost, 'output'=output))
-    
-}
-
-
-    #############################################################################################
-    x <- tf$reshape(x, c(-1L, n_input))
-    x <- tf$split(x, n_input, 1L)
-  
-    rnn_cell<-tf$nn$rnn_cell$MultiRNNCell(list(tf$nn$rnn_cell$BasicLSTMCell(n_hidden), tf$nn$rnn_cell$BasicLSTMCell(n_hidden)))
-  
-    outputs<-tf$nn$static_rnn(cell = rnn_cell, inputs = x, dtype = tf$float32)
-  
-    return(tf$matmul(outputs[[1]][[n_input]], weights) + biases)
-
-
+        unpack_params=function(params){
+            self$init_scale <- params$init_scale
+            self$learning_rate <- params$learning_rate
+            self$max_grad_norm <- params$max_grad_norm
+            self$num_layers <- params$num_layers
+            self$num_steps <- params$num_steps
+            self$hidden_size <- params$hidden_size
+            self$forget_bias <- params$forget_bias
+            self$max_epoch <- params$max_epoch
+            self$max_max_epoch <- params$max_max_epoch
+            self$keep_prob <- params$keep_prob
+            self$lr_decay <- params$lr_decay
+            self$batch_size <- params$batch_size
+            self$vocab_size <- params$vocab_size
+        },
+        
+        make_cell=function(){
+            LSTMCell<-function(){
+                lstm<-tf$contrib$rnn$BasicLSTMCell(self$hidden_size, forget_bias=self$forget_bias, 
+                                                   state_is_tuple=TRUE, reuse=tf$get_variable_scope()$reuse)
+                return(lstm)
+            }    
+            ATTNCell<-LSTMCell
+            if((self$is_training) && (self$keep_prob > 1)){
+                ATTNCell<-function(params){
+                    attn<-tf$contrib$rnn$DropoutWrapper(LSTMCell(), output_keep_prob=self$keep_prob)
+                    return(attn)
+                }
+            }
+            
+            if(self$num_layers==1){
+                cell<-tf$contrib$rnn$RNNCell(ATTNCell(), state_is_tuple=TRUE)
+            } else if (self$num_layers == 2) {
+                cell<-tf$contrib$rnn$MultiRNNCell(list(ATTNCell(), ATTNCell()), state_is_tuple=TRUE)
+            } else if (self$num_layers == 3) {
+                cell<-tf$contrib$rnn$MultiRNNCell(list(ATTNCell(), ATTNCell(), ATTNCell()), state_is_tuple=TRUE)
+            } else {  # Max 4 layers
+                cell<-tf$contrib$rnn$MultiRNNCell(list(ATTNCell(), ATTNCell(), ATTNCell(), ATTNCell()), state_is_tuple=TRUE)
+            }
+            return(cell)
+        }
+    )
+)
 ```
 
+Ok. What we did there was generalize all of the required functions and variable for the model to be self contained. Now, we can run the model by calling on some of the variables. For example, although `train_op` is a variable, it's a variable pointing to a tensorflow operation (`optimizer$apply_gradients(...)`). We'll use this in the next chunk below to run each epoch. 
+
+```{r epochs}
+run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
+  
+  start_time <- Sys.time()
+  costs <- 0.0
+  iters <- 0
+
+  fetches<-c(cost, final_state)
+  
+  if(!is.null(eval_op)){
+      fetches<-c(fetches, eval_op)
+  }
+  
+  for (step in c(1:model$input$epoch_size)){
+    feed_dict <- dict()
+    for (i in 1:length(model$get_initial_state)){
+      feed_dict[[i]][c] <- state[i]$c
+      feed_dict[[i]][h] <- state[i]$h
+    }
+
+    vals <- session$run(fetches=fetches, feed_dict=feed_dict)
+    cost <- vals$cost
+    state <- vals$final_state
+
+    costs <- costs + cost
+    iters <- iters + model$input$num_steps
+
+    if (verbose && step %% (model$epoch_size %/% 10) == 10)
+      message(paste0(round(step * 1.0 / model$input$epoch_size,3)," perplexity: ",
+                     round(exp(costs / iters),3), " speed: ",
+                     round(iters * model$input$batch_size / as.numeric(Sys.time() - start_time),3), " wps")) 
+  }
+  return(exp(costs / iters))
+}
+```
+
+Data Prep
+
+```{r dataprep}
+PTBInput<-R6Class('PTBInput',
+    public=list(
+    batch_size=NULL,
+    num_steps=NULL,
+    epoch_size=NULL,
+    input_data=NULL,
+    targets=NULL,
+    
+    initialize<-function(params, data, name=NULL){
+        self$batch_size <- params$batch_size
+        self$num_steps <- params$num_steps
+        self$epoch_size <- ((length(data) %/% batch_size) - 1) %/% num_steps
+        t<-tensorProducer(data, self$batch_size, self$num_steps, name=name) 
+        self$input_data <- t[[1]] 
+        self$targets <- t[[2]]
+    }
+    )                  
+)
+```
