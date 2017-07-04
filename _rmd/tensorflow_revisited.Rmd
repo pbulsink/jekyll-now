@@ -68,9 +68,7 @@ tensorProducer<-function(raw_data, batch_size, num_steps, name=NULL){
         data_len<-tf$size(raw_data, out_type = tf$int32)
         batch_len<-data_len/batch_size
         batch_len<-tf$to_int32(batch_len)
-        message(paste0(batch_len, ' = batch_len'))
         data<-tf$reshape(raw_data[0L:(sess$run(batch_len * batch_size)-1L)], shape(batch_size, sess$run(batch_len)))
-        message(data)
         epoch_size<-as.integer((sess$run(batch_len)-1L) %/% num_steps)
         
         if(!epoch_size>0){
@@ -184,6 +182,10 @@ Model<-R6Class('Model',
         output=NULL,
         params_type=NULL,
         vocab_size = NULL,
+        cost = NULL,
+        lr = NULL,
+        final_state = NULL,
+        new_lr = NULL,
         
         initialize = function(is_training, params, inputs){
             private$unpack_params(params)
@@ -200,58 +202,54 @@ Model<-R6Class('Model',
             }
             private$x <- tf$unstack(private$x, num=self$num_steps, axis=1L) 
             outputs <- tf$contrib$rnn$static_rnn(cell, private$x, private$initial_state)
-            self$output <- tf$reshape(tf$stack(axis=1, values=outputs[[1]])[[self$n_input]])  # tf.reshape(tf.stack(axis=1, values=outputs), [-1, size])
+            o <- tf$stack(axis=1, values=outputs[[1]])
+            self$output <- tf$reshape(tensor = o, shape = shape(-1L, self$hidden_size))  
     
             weights <- tf$get_variable('weights', shape(self$hidden_size, self$vocab_size), tf$float32)
             biases <- tf$get_variable('biases', shape(1, self$vocab_size), tf$float32)
             logits <- tf$matmul(self$output, weights) + biases
-            
-            loss<-tf$contrib$seq2seq$sequence_loss(logits, private$y, 
-                                                   tf$ones(shape(batch_size, num_steps), 
-                                                           average_across_timesteps=FALSE, average_across_batch=TRUE))
-            private$cost<-tf$reduce_sum(loss)
-            private$final_state<-outputs[[2]]
+            logits <- tf$reshape(logits, shape(self$batch_size, self$num_steps, self$vocab_size))
+
+            message(logits)
+            message(private$y)
+            ones<-tf$ones(shape(self$batch_size, self$num_steps), dtype=tf$float32)
+            message(ones)
+            loss<-tf$contrib$seq2seq$sequence_loss(logits, private$y, ones, 
+                                                           average_across_timesteps=FALSE, average_across_batch=TRUE)
+            self$cost<-tf$reduce_sum(loss)
+            self$final_state<-outputs[[2]]
             
             if(self$is_training){
-                private$lr = tf$Variable(0.0, trainable=FALSE)
-                tvars = tf$trainable_variables()
-                grads = tf$clip_by_global_norm(tf$gradients(private$cost, tvars),self$max_grad_norm)[[1]]
-                optimizer = tf$train$GradientDescentOptimizer(private$lr)
+                self$lr <- tf$Variable(0.0, trainable=FALSE)
+                tvars <- tf$trainable_variables()
+                grads <- tf$clip_by_global_norm(tf$gradients(self$cost, tvars),self$max_grad_norm)[[1]]
+                optimizer <- tf$train$GradientDescentOptimizer(self$lr)
                 private$train_op = optimizer$apply_gradients(
                     Map(function(x,y) c(x,y), grads, tvars), #  zip(grads, tvars),
                     global_step=tf$contrib$framework$get_or_create_global_step())
+                self$new_lr <- tf$placeholder(dtype = tf$float32, shape=NULL, name = "new_learning_rate") 
+                self$lr_update <- tf$assign(self$lr, self$new_lr)
             }
         },
         assign_lr=function(session, lr_value){
-            new_lr<-tf$placeholder(tf$float32, shape(NULL), name="new_learning_rate")
-            lr_update<-tf$assign(private$lr, new_lr)
-            session$run(lr_update, feed_dict=dict(new_lr = lr_value))
-        },
-        get_lr=function(){
-            return(private$lr)
+            self$new_lr<-lr_value
+            new_lr<-self$new_lr
+            message(self$new_lr)
+            session$run(self$lr_update, feed_dict=dict(new_lr = self$lr_value))
         },
         get_train_op=function(){
             return(private$train_op)
         },
-        get_final_state=function(){
-            return(private$final_state)
-        },
         get_inital_state=function(){
             return(private$initial_state)
-        },
-        get_cost=function(){
-            return(private$cost)
         },
         get_input=function(){
             return(list(x=private$x, y=private$y))
         }
     ),
     private = list(
-        lr=NULL,
         train_op=NULL,
         initial_state=NULL,
-        final_state=NULL,
-        cost=NULL,
         x=NULL,
         y=NULL,
         
@@ -341,7 +339,7 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
 We'll create another class for tensor input, this contains the processed data (passed through `tensorProducer`) as well as a few of the parameters to pass along. 
 
 ```{r dataprep}
-tensorInput<-R6Class('tensorInput',
+TensorInput<-R6Class('TensorInput',
     public=list(
     batch_size=NULL,
     num_steps=NULL,
@@ -349,11 +347,11 @@ tensorInput<-R6Class('tensorInput',
     input_data=NULL,
     targets=NULL,
     
-    initialize<-function(params, data, name=NULL){
+    initialize=function(params, data, name=NULL){
         self$batch_size <- params$batch_size
         self$num_steps <- params$num_steps
-        self$epoch_size <- ((length(data) %/% batch_size) - 1) %/% num_steps
-        t<-tensorProducer(data, self$batch_size, self$num_steps, name=name) 
+        self$epoch_size <- ((length(data) %/% self$batch_size) - 1) %/% self$num_steps
+        t <- tensorProducer(data, self$batch_size, self$num_steps, name=name) 
         self$input_data <- t[[1]] 
         self$targets <- t[[2]]
     }
@@ -361,17 +359,14 @@ tensorInput<-R6Class('tensorInput',
 )
 ```
 
-
 Finally, the code to tie it all together and run it.
 
 ```{r main, eval=FALSE}
-datapath<-"./_data/"
-verbose<-TRUE
-savepath<-"./data/tfmodels/"
-params_type<-'small'
+main<-function(datapath="./_data/", verbose=TRUE, savepath="./data/tfmodels/", params_type='small'){ 
+    require(tensorflow)
+    require(R6)
 
-main<-function(){  
-
+    message("Prepping Data")
     data<-prepData(datapath)
     test_data<-data$test_data
     train_data<-data$train_data
@@ -379,38 +374,42 @@ main<-function(){
     vocab<-data$vocab
 
     params = paramChooser(params_type)
-    eval_config = paramChooser(params_type)
-    eval_config$batch_size = 1
-    eval_config$num_steps = 1
+    eval_params = paramChooser(params_type)
+    eval_params$batch_size = 1
+    eval_params$num_steps = 1
 
     with(tf$Graph()$as_default(), {
-        initializer = tf$random_uniform_initializer(-config$init_scale, config$init_scale)
+        initializer = tf$random_uniform_initializer(-params$init_scale, params$init_scale)
     })
 
+    message("Bulilding Trainer")
     with(tf$name_scope("Train"), {
-        train_input <- tensorInput(params=params, data=train_data, name="TrainInput")
-        with(tf.variable_scope("Model", reuse=NULL, initializer=initializer), {
-            m = Model(is_training=TRUE, params=params, inputs=train_input)
+        train_input <- TensorInput$new(params=params, data=train_data, name="TrainInput")
+        with(tf$variable_scope("Model", reuse=NULL, initializer=initializer), {
+            m <- Model$new(is_training=TRUE, params=params, inputs=train_input)
         })
         tf$summary$scalar("Training Loss", m$cost)
         tf$summary$scalar("Learning Rate", m$lr)
     })
 
+    message("Bulilding Validator")
     with(tf$name_scope("Valid"), {
-      valid_input = tensorInput(params=params, data=valid_data, name="ValidInput")
+      valid_input <- TensorInput$new(params=params, data=valid_data, name="ValidInput")
       with(tf$variable_scope("Model", reuse=TRUE, initializer=initializer), {
-        mvalid = Model(is_training=FALSE, params=params, inputs=valid_input)
+        mvalid <- Model$new(is_training=FALSE, params=params, inputs=valid_input)
         })
       tf$summary$scalar("Validation Loss", mvalid$cost)
     })
       
+    message("Bulilding Tester")
     with(tf$name_scope("Test"), {
-      test_input = tensorInput(params=eval_config, data=test_data, name="TestInput")
+      test_input <- TensorInput$new(params=eval_params, data=test_data, name="TestInput")
       with(tf$variable_scope("Model", reuse=TRUE, initializer=initializer), {
-        mtest = Model(is_training=FALSE, params=eval_config, inputs=test_input)
+        mtest <- Model$new(is_training=FALSE, params=eval_params, inputs=test_input)
         })
     })
 
+    message("Starting Trainer")
     sv = tf$train$Supervisor(logdir=savepath)
     with(sv$managed_session() %as% session, {
       for(i in 1:params$max_max_epoch){
@@ -426,13 +425,14 @@ main<-function(){
         message(paste0("Epoch: ", i+1, " Valid Perplexity: ", round(valid_perplexity, 3)))
       }
       test_perplexity = run_epoch(session, mtest)
-      print("Test Perplexity: %.3f" % test_perplexity)
+      message(paste0("Test Perplexity: ", round(test_perplexity, 3)))
 
       if (!is.null(savepath)){
-        message(paste0("Saving model to ", savepath)
+        message(paste0("Saving model to ", savepath))
         sv$saver$save(session, savepath, global_step=sv$global_step)
       }
     })
+}
 
 ```
 
