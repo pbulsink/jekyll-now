@@ -50,15 +50,8 @@ prepData<-function(datapath="./_data/"){
     train_v<-integerize(ptb_train, vocab)
     valid_v<-integerize(ptb_valid, vocab)
     
-    return(list(test_v=test_v, train_v=train_v, valid_v=valid_v, vocab=vocab))
+    return(list(test_data=test_v, train_data=train_v, valid_data=valid_v, vocab=vocab))
 }
-
-data<-prepData("../_data/")
-test_v<-data$test_v
-train_v<-data$train_v
-valid_v<-data$valid_v
-vocab<-data$vocab
-rm(data)
 ```
 
 We'll also set up a function to split data for feeding into our TensorFlow model, as the example does. This slices base data into pieces and returns those chunks for us.
@@ -192,8 +185,8 @@ Model<-R6Class('Model',
         params_type=NULL,
         vocab_size = NULL,
         
-        initialize = function(is_training, params_type, inputs){
-            private$unpack_params(paramChooser(params_type))
+        initialize = function(is_training, params, inputs){
+            private$unpack_params(params)
             self$params_type <- params_type
             self$is_training <- is_training
             self$input <- inputs
@@ -345,10 +338,10 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
 }
 ```
 
-Data Prep
+We'll create another class for tensor input, this contains the processed data (passed through `tensorProducer`) as well as a few of the parameters to pass along. 
 
 ```{r dataprep}
-PTBInput<-R6Class('PTBInput',
+tensorInput<-R6Class('tensorInput',
     public=list(
     batch_size=NULL,
     num_steps=NULL,
@@ -366,4 +359,89 @@ PTBInput<-R6Class('PTBInput',
     }
     )                  
 )
+```
+
+
+Finally, the code to tie it all together and run it.
+
+```{r main, eval=FALSE}
+datapath<-"./_data/"
+verbose<-TRUE
+savepath<-"./data/tfmodels/"
+params_type<-'small'
+
+main<-function(){  
+
+    data<-prepData(datapath)
+    test_data<-data$test_data
+    train_data<-data$train_data
+    valid_data<-data$valid_data
+    vocab<-data$vocab
+
+    params = paramChooser(params_type)
+    eval_config = paramChooser(params_type)
+    eval_config$batch_size = 1
+    eval_config$num_steps = 1
+
+    with(tf$Graph()$as_default(), {
+        initializer = tf$random_uniform_initializer(-config$init_scale, config$init_scale)
+    })
+
+    with(tf$name_scope("Train"), {
+        train_input <- tensorInput(params=params, data=train_data, name="TrainInput")
+        with(tf.variable_scope("Model", reuse=NULL, initializer=initializer), {
+            m = Model(is_training=TRUE, params=params, inputs=train_input)
+        })
+        tf$summary$scalar("Training Loss", m$cost)
+        tf$summary$scalar("Learning Rate", m$lr)
+    })
+
+    with(tf$name_scope("Valid"), {
+      valid_input = tensorInput(params=params, data=valid_data, name="ValidInput")
+      with(tf$variable_scope("Model", reuse=TRUE, initializer=initializer), {
+        mvalid = Model(is_training=FALSE, params=params, inputs=valid_input)
+        })
+      tf$summary$scalar("Validation Loss", mvalid$cost)
+    })
+      
+    with(tf$name_scope("Test"), {
+      test_input = tensorInput(params=eval_config, data=test_data, name="TestInput")
+      with(tf$variable_scope("Model", reuse=TRUE, initializer=initializer), {
+        mtest = Model(is_training=FALSE, params=eval_config, inputs=test_input)
+        })
+    })
+
+    sv = tf$train$Supervisor(logdir=savepath)
+    with(sv$managed_session() %as% session, {
+      for(i in 1:params$max_max_epoch){
+        lr_decay = params$lr_decay ** max(i + 1 - params$max_epoch, 0.0)
+        m$assign_lr(session, params$learning_rate * lr_decay)
+
+        message(paste0("Epoch: ", i + 1,
+                       " Learning rate: ", round(session$run(m$lr), 3)))
+        train_perplexity = run_epoch(session, m, eval_op=m$train_op, verbose=TRUE)
+        message(paste0("Epoch: ", i + 1, 
+                       " Train Perplexity: ", round(train_perplexity, 3)))
+        valid_perplexity = run_epoch(session, mvalid)
+        message(paste0("Epoch: ", i+1, " Valid Perplexity: ", round(valid_perplexity, 3)))
+      }
+      test_perplexity = run_epoch(session, mtest)
+      print("Test Perplexity: %.3f" % test_perplexity)
+
+      if (!is.null(savepath)){
+        message(paste0("Saving model to ", savepath)
+        sv$saver$save(session, savepath, global_step=sv$global_step)
+      }
+    })
+
+```
+
+I've checked this all, and it runs, but takes a few hours on my system. I get comparable results to the example in the original code:
+
+
+
+For reference, here's my session_info
+
+```{r sysinfo}
+sessionInfo()
 ```
