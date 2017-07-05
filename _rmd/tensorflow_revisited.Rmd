@@ -61,12 +61,14 @@ tensorProducer<-function(raw_data, batch_size, num_steps, name=NULL){
     batch_size<-as.integer(batch_size)
     num_steps<-as.integer(num_steps)
     raw_data<-as.integer(raw_data)
+    
     sess<-tf$Session()
     
     with(tf$name_scope(name, "tensorProducer", list(raw_data, batch_size, num_steps)), {
+        data_len<-length(raw_data)
         raw_data<-tf$convert_to_tensor(raw_data, dtype=tf$int32, name='raw_data')
         data_len<-tf$size(raw_data, out_type = tf$int32)
-        batch_len<-data_len/batch_size
+        batch_len<-data_len %/% batch_size
         batch_len<-tf$to_int32(batch_len)
         data<-tf$reshape(raw_data[0L:(sess$run(batch_len * batch_size)-1L)], shape(batch_size, sess$run(batch_len)))
         epoch_size<-as.integer((sess$run(batch_len)-1L) %/% num_steps)
@@ -180,16 +182,15 @@ Model<-R6Class('Model',
         num_steps = NULL,
         outputs=NULL,
         output=NULL,
-        params_type=NULL,
         vocab_size = NULL,
         cost = NULL,
         lr = NULL,
         final_state = NULL,
         new_lr = NULL,
+        lr_update = NULL,
         
         initialize = function(is_training, params, inputs){
             private$unpack_params(params)
-            self$params_type <- params_type
             self$is_training <- is_training
             self$input <- inputs
             cell<-private$make_cell()
@@ -210,10 +211,7 @@ Model<-R6Class('Model',
             logits <- tf$matmul(self$output, weights) + biases
             logits <- tf$reshape(logits, shape(self$batch_size, self$num_steps, self$vocab_size))
 
-            message(logits)
-            message(private$y)
             ones<-tf$ones(shape(self$batch_size, self$num_steps), dtype=tf$float32)
-            message(ones)
             loss<-tf$contrib$seq2seq$sequence_loss(logits, private$y, ones, 
                                                            average_across_timesteps=FALSE, average_across_batch=TRUE)
             self$cost<-tf$reduce_sum(loss)
@@ -232,10 +230,8 @@ Model<-R6Class('Model',
             }
         },
         assign_lr=function(session, lr_value){
-            self$new_lr<-lr_value
             new_lr<-self$new_lr
-            message(self$new_lr)
-            session$run(self$lr_update, feed_dict=dict(new_lr = self$lr_value))
+            session$run(self$lr_update, feed_dict=dict(new_lr = lr_value))
         },
         get_train_op=function(){
             return(private$train_op)
@@ -307,10 +303,10 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
   costs <- 0.0
   iters <- 0
 
-  fetches<-c(cost, final_state)
+  fetches<-c(model$cost, model$final_state)
   
   if(!is.null(eval_op)){
-      fetches<-c(fetches, eval_op)
+      fetches<-c(fetches, model$eval_op)
   }
   
   for (step in c(1:model$input$epoch_size)){
@@ -361,22 +357,25 @@ TensorInput<-R6Class('TensorInput',
 
 Finally, the code to tie it all together and run it.
 
-```{r main, eval=FALSE}
-main<-function(datapath="./_data/", verbose=TRUE, savepath="./data/tfmodels/", params_type='small'){ 
+```{r main}
+main<-function(datapath="./_data/", verbose=TRUE, savepath=NULL, params_type='small'){ 
     require(tensorflow)
     require(R6)
-
+    
     message("Prepping Data")
+    
+    if(is.null(savepath))
+        savepath<-paste0(datapath, "tensorflow/", params_type)
     data<-prepData(datapath)
     test_data<-data$test_data
     train_data<-data$train_data
     valid_data<-data$valid_data
     vocab<-data$vocab
 
-    params = paramChooser(params_type)
-    eval_params = paramChooser(params_type)
-    eval_params$batch_size = 1
-    eval_params$num_steps = 1
+    params <- paramChooser(params_type)
+    eval_params <- paramChooser(params_type)
+    eval_params$batch_size <- 1
+    eval_params$num_steps <- 1
 
     with(tf$Graph()$as_default(), {
         initializer = tf$random_uniform_initializer(-params$init_scale, params$init_scale)
@@ -413,21 +412,21 @@ main<-function(datapath="./_data/", verbose=TRUE, savepath="./data/tfmodels/", p
     sv = tf$train$Supervisor(logdir=savepath)
     with(sv$managed_session() %as% session, {
       for(i in 1:params$max_max_epoch){
-        lr_decay = params$lr_decay ** max(i + 1 - params$max_epoch, 0.0)
+        lr_decay = params$lr_decay ** max(i - params$max_epoch, 0.0)
         m$assign_lr(session, params$learning_rate * lr_decay)
 
-        message(paste0("Epoch: ", i + 1,
+        message(paste0("Epoch: ", i,
                        " Learning rate: ", round(session$run(m$lr), 3)))
         train_perplexity = run_epoch(session, m, eval_op=m$train_op, verbose=TRUE)
-        message(paste0("Epoch: ", i + 1, 
+        message(paste0("Epoch: ", i, 
                        " Train Perplexity: ", round(train_perplexity, 3)))
         valid_perplexity = run_epoch(session, mvalid)
-        message(paste0("Epoch: ", i+1, " Valid Perplexity: ", round(valid_perplexity, 3)))
+        message(paste0("Epoch: ", i, " Valid Perplexity: ", round(valid_perplexity, 3)))
       }
       test_perplexity = run_epoch(session, mtest)
       message(paste0("Test Perplexity: ", round(test_perplexity, 3)))
 
-      if (!is.null(savepath)){
+      if (savepath){
         message(paste0("Saving model to ", savepath))
         sv$saver$save(session, savepath, global_step=sv$global_step)
       }
