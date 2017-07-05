@@ -44,7 +44,7 @@ prepData<-function(datapath="./_data/"){
     ptb_train<-unlist(strsplit(paste(ptb_train, collapse="<eos>"), " "))
     ptb_valid<-unlist(strsplit(paste(ptb_valid, collapse="<eos>"), " "))
     
-    vocab<-unique(ptb_test)
+    vocab<-unique(names(sort(table(ptb_test), decreasing = TRUE)))
     
     test_v<-integerize(ptb_test, vocab)
     train_v<-integerize(ptb_train, vocab)
@@ -188,13 +188,14 @@ Model<-R6Class('Model',
         final_state = NULL,
         new_lr = NULL,
         lr_update = NULL,
+        initial_state = NULL,
         
         initialize = function(is_training, params, inputs){
             private$unpack_params(params)
             self$is_training <- is_training
             self$input <- inputs
             cell<-private$make_cell()
-            private$initial_state <- cell$zero_state(self$batch_size, tf$float32)
+            self$initial_state <- cell$zero_state(self$batch_size, tf$float32)
             embedding <- tf$get_variable('embedding', shape(self$vocab_size, self$hidden_size), dtype=tf$float32)
             private$x <- tf$nn$embedding_lookup(embedding, self$input$input_data)
             private$y <- self$input$targets
@@ -202,7 +203,7 @@ Model<-R6Class('Model',
                 private$x <- tf$nn$dropout(private$x, self$keep_prob)
             }
             private$x <- tf$unstack(private$x, num=self$num_steps, axis=1L) 
-            outputs <- tf$contrib$rnn$static_rnn(cell, private$x, private$initial_state)
+            outputs <- tf$contrib$rnn$static_rnn(cell, private$x, self$initial_state)
             o <- tf$stack(axis=1, values=outputs[[1]])
             self$output <- tf$reshape(tensor = o, shape = shape(-1L, self$hidden_size))  
     
@@ -210,7 +211,6 @@ Model<-R6Class('Model',
             biases <- tf$get_variable('biases', shape(1, self$vocab_size), tf$float32)
             logits <- tf$matmul(self$output, weights) + biases
             logits <- tf$reshape(logits, shape(self$batch_size, self$num_steps, self$vocab_size))
-
             ones<-tf$ones(shape(self$batch_size, self$num_steps), dtype=tf$float32)
             loss<-tf$contrib$seq2seq$sequence_loss(logits, private$y, ones, 
                                                            average_across_timesteps=FALSE, average_across_batch=TRUE)
@@ -236,16 +236,12 @@ Model<-R6Class('Model',
         get_train_op=function(){
             return(private$train_op)
         },
-        get_inital_state=function(){
-            return(private$initial_state)
-        },
         get_input=function(){
             return(list(x=private$x, y=private$y))
         }
     ),
     private = list(
         train_op=NULL,
-        initial_state=NULL,
         x=NULL,
         y=NULL,
         
@@ -302,6 +298,7 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
   start_time <- Sys.time()
   costs <- 0.0
   iters <- 0
+  state<-model[['initial_state']]
 
   fetches<-c(model$cost, model$final_state)
   
@@ -310,15 +307,38 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
   }
   
   for (step in c(1:model$input$epoch_size)){
-    feed_dict <- dict()
-    for (i in 1:length(model$get_initial_state)){
-      feed_dict[[i]][c] <- state[i]$c
-      feed_dict[[i]][h] <- state[i]$h
-    }
+    feed_dict <- list()
 
-    vals <- session$run(fetches=fetches, feed_dict=feed_dict)
-    cost <- vals$cost
-    state <- vals$final_state
+    #this is awkward in R because of poor dictionary support from reticulate
+    ncell<-length(model$initial_state)
+    if(ncell == 1){
+        feed_dict<-dict('1'=tuple(c=state[[1]]$c, 'h'=state[[1]]$h))
+    } else if (ncell == 2){
+        feed_dict<-dict('1'=tuple(c=state[[1]]$c, 'h'=state[[1]]$h),
+                        '2'=tuple(c=state[[2]]$c, 'h'=state[[2]]$h))
+    } else if (ncell == 2){
+        feed_dict<-dict('1'=tuple(c=state[[1]]$c, 'h'=state[[1]]$h),
+                        '2'=tuple(c=state[[2]]$c, 'h'=state[[2]]$h),
+                        '3'=tuple(c=state[[3]]$c, 'h'=state[[3]]$h))
+    } else if (ncell == 2){
+        feed_dict<-dict('1'=tuple(c=state[[1]]$c, 'h'=state[[1]]$h),
+                        '2'=tuple(c=state[[2]]$c, 'h'=state[[2]]$h),
+                        '3'=tuple(c=state[[3]]$c, 'h'=state[[3]]$h),
+                        '4'=tuple(c=state[[4]]$c, 'h'=state[[4]]$h))
+    }
+    
+    # for (i in 1:length(model$initial_state)){
+    #   feed_dict[[i]]<-tuple('c'=state[[i]]$c, 'h'=state[[i]]$h)
+    #   message('feed_dict[[i]]')
+    #   message(feed_dict[[i]])
+    # }
+    
+    message('feed_dict')
+    message(feed_dict)
+
+    #vals <- session$run(fetches=fetches, feed_dict=dict(feed_dict))
+    cost <- session$run(model$cost, feed_dict=dict(feed_dict))
+    state <- session$run(model$final_state, feed_dict=dict(feed_dict))
 
     costs <- costs + cost
     iters <- iters + model$input$num_steps
@@ -381,7 +401,7 @@ main<-function(datapath="./_data/", verbose=TRUE, savepath=NULL, params_type='sm
         initializer = tf$random_uniform_initializer(-params$init_scale, params$init_scale)
     })
 
-    message("Bulilding Trainer")
+    message("Building Trainer")
     with(tf$name_scope("Train"), {
         train_input <- TensorInput$new(params=params, data=train_data, name="TrainInput")
         with(tf$variable_scope("Model", reuse=NULL, initializer=initializer), {
@@ -391,7 +411,7 @@ main<-function(datapath="./_data/", verbose=TRUE, savepath=NULL, params_type='sm
         tf$summary$scalar("Learning Rate", m$lr)
     })
 
-    message("Bulilding Validator")
+    message("Building Validator")
     with(tf$name_scope("Valid"), {
       valid_input <- TensorInput$new(params=params, data=valid_data, name="ValidInput")
       with(tf$variable_scope("Model", reuse=TRUE, initializer=initializer), {
@@ -400,7 +420,7 @@ main<-function(datapath="./_data/", verbose=TRUE, savepath=NULL, params_type='sm
       tf$summary$scalar("Validation Loss", mvalid$cost)
     })
       
-    message("Bulilding Tester")
+    message("Building Tester")
     with(tf$name_scope("Test"), {
       test_input <- TensorInput$new(params=eval_params, data=test_data, name="TestInput")
       with(tf$variable_scope("Model", reuse=TRUE, initializer=initializer), {
