@@ -301,43 +301,57 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
   state<-model[['initial_state']]
 
   fetches<-c(model$cost, model$final_state)
-  
   if(!is.null(eval_op)){
       fetches<-c(fetches, model$eval_op)
   }
   
   for (step in c(1:model$input$epoch_size)){
-    feed_dict <- list()
-
-    #this is awkward in R because of poor dictionary support from reticulate
+    #this is awkward in R because of poor dictionary support from reticulate::dict() and non-handling of $ in key.
     ncell<-length(model$initial_state)
     if(ncell == 1){
-        feed_dict<-dict('1'=tuple(c=state[[1]]$c, 'h'=state[[1]]$h))
+        c1<-state[[1]]$c
+        h1<-state[[1]]$h
+        feed_dict<-dict(c1 = state[[1]]$c, h1 = state[[1]]$h)
     } else if (ncell == 2){
-        feed_dict<-dict('1'=tuple(c=state[[1]]$c, 'h'=state[[1]]$h),
-                        '2'=tuple(c=state[[2]]$c, 'h'=state[[2]]$h))
-    } else if (ncell == 2){
-        feed_dict<-dict('1'=tuple(c=state[[1]]$c, 'h'=state[[1]]$h),
-                        '2'=tuple(c=state[[2]]$c, 'h'=state[[2]]$h),
-                        '3'=tuple(c=state[[3]]$c, 'h'=state[[3]]$h))
-    } else if (ncell == 2){
-        feed_dict<-dict('1'=tuple(c=state[[1]]$c, 'h'=state[[1]]$h),
-                        '2'=tuple(c=state[[2]]$c, 'h'=state[[2]]$h),
-                        '3'=tuple(c=state[[3]]$c, 'h'=state[[3]]$h),
-                        '4'=tuple(c=state[[4]]$c, 'h'=state[[4]]$h))
-    }
+        c1<-state[[1]]$c
+        h1<-state[[1]]$h
+        c2<-state[[2]]$c
+        h2<-state[[2]]$h
+        feed_dict<-dict(c1 = state[[1]]$c, h1 = state[[1]]$h,
+                        c2 = state[[2]]$c, h2 = state[[2]]$h)
+    }  # else if (ncell == 3){
+    #     feed_dict<-dict((state[[1]]$c) = state[[1]]$c, (state[[1]]$h) = state[[1]]$h,
+    #                     (state[[2]]$c) = state[[2]]$c, (state[[2]]$h) = state[[2]]$h,
+    #                     (state[[3]]$c) = state[[3]]$c, (state[[3]]$h) = state[[3]]$h)
+    # } else if (ncell == 4){
+    #     feed_dict<-dict((state[[1]]$c) = state[[1]]$c, (state[[1]]$h) = state[[1]]$h,
+    #                     (state[[2]]$c) = state[[2]]$c, (state[[2]]$h) = state[[2]]$h,
+    #                     (state[[3]]$c) = state[[3]]$c, (state[[3]]$h) = state[[3]]$h,
+    #                     (state[[4]]$c) = state[[4]]$c, (state[[4]]$h) = state[[4]]$h)
+    # }
     
+    message('feed_dict')
+    message(feed_dict)
+    stop()
     # for (i in 1:length(model$initial_state)){
     #   feed_dict[[i]]<-tuple('c'=state[[i]]$c, 'h'=state[[i]]$h)
     #   message('feed_dict[[i]]')
     #   message(feed_dict[[i]])
     # }
     
+    # for step in range(model.input.epoch_size):
+    #   feed_dict = {}
+    #   for i, (c, h) in enumerate(model.initial_state):
+    #     feed_dict[c] = state[i].c
+    #     feed_dict[h] = state[i].h
+    
     message('feed_dict')
     message(feed_dict)
 
     #vals <- session$run(fetches=fetches, feed_dict=dict(feed_dict))
+    message('costs')
     cost <- session$run(model$cost, feed_dict=dict(feed_dict))
+    message('state')
     state <- session$run(model$final_state, feed_dict=dict(feed_dict))
 
     costs <- costs + cost
@@ -432,7 +446,9 @@ main<-function(datapath="./_data/", verbose=TRUE, savepath=NULL, params_type='sm
     sv = tf$train$Supervisor(logdir=savepath)
     with(sv$managed_session() %as% session, {
       for(i in 1:params$max_max_epoch){
+        message('new lr')
         lr_decay = params$lr_decay ** max(i - params$max_epoch, 0.0)
+        message('assign lr')
         m$assign_lr(session, params$learning_rate * lr_decay)
 
         message(paste0("Epoch: ", i,
