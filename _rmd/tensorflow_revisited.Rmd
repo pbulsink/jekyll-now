@@ -196,9 +196,13 @@ Model<-R6Class('Model',
             self$input <- inputs
             cell<-private$make_cell()
             self$initial_state <- cell$zero_state(self$batch_size, tf$float32)
-            embedding <- tf$get_variable('embedding', shape(self$vocab_size, self$hidden_size), dtype=tf$float32)
-            private$x <- tf$nn$embedding_lookup(embedding, self$input$input_data)
+            with(tf$device("/cpu:0"), {
+                embedding <- tf$get_variable('embedding', shape(self$vocab_size, self$hidden_size), dtype=tf$float32)
+                private$x <- tf$nn$embedding_lookup(embedding, self$input$input_data)
+                })
+            
             private$y <- self$input$targets
+            
             if(self$is_training && self$keep_prob < 1){
                 private$x <- tf$nn$dropout(private$x, self$keep_prob)
             }
@@ -212,9 +216,15 @@ Model<-R6Class('Model',
             logits <- tf$matmul(self$output, weights) + biases
             logits <- tf$reshape(logits, shape(self$batch_size, self$num_steps, self$vocab_size))
             ones<-tf$ones(shape(self$batch_size, self$num_steps), dtype=tf$float32)
-            loss<-tf$contrib$seq2seq$sequence_loss(logits, private$y, ones, 
-                                                           average_across_timesteps=FALSE, average_across_batch=TRUE)
-            self$cost<-tf$reduce_sum(loss)
+            # loss<-tf$contrib$seq2seq$sequence_loss(logits, private$y, ones, 
+            #                                        average_across_timesteps=FALSE,
+            #                                        average_across_batch=TRUE)
+            # Something was wrong with seq2seq$sequence_loss. No one knows why.
+            
+            loss<-tf$nn$softmax_cross_entropy_with_logits(labels=tf$reshape(private$y, shape(-1, 1)), 
+                                                                 logits=tf$reshape(logits, shape(-1, self$vocab_size)))
+            
+            self$cost<-tf$reduce_sum(loss) / self$batch_size
             self$final_state<-outputs[[2]]
             
             if(self$is_training){
@@ -319,25 +329,31 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
         h2<-state[[2]]$h
         feed_dict<-dict(c1 = state[[1]]$c, h1 = state[[1]]$h,
                         c2 = state[[2]]$c, h2 = state[[2]]$h)
-    }  # else if (ncell == 3){
-    #     feed_dict<-dict((state[[1]]$c) = state[[1]]$c, (state[[1]]$h) = state[[1]]$h,
-    #                     (state[[2]]$c) = state[[2]]$c, (state[[2]]$h) = state[[2]]$h,
-    #                     (state[[3]]$c) = state[[3]]$c, (state[[3]]$h) = state[[3]]$h)
-    # } else if (ncell == 4){
-    #     feed_dict<-dict((state[[1]]$c) = state[[1]]$c, (state[[1]]$h) = state[[1]]$h,
-    #                     (state[[2]]$c) = state[[2]]$c, (state[[2]]$h) = state[[2]]$h,
-    #                     (state[[3]]$c) = state[[3]]$c, (state[[3]]$h) = state[[3]]$h,
-    #                     (state[[4]]$c) = state[[4]]$c, (state[[4]]$h) = state[[4]]$h)
-    # }
+    } else if (ncell == 3){
+        c1<-state[[1]]$c
+        h1<-state[[1]]$h
+        c2<-state[[2]]$c
+        h2<-state[[2]]$h
+        c3<-state[[3]]$c
+        h3<-state[[3]]$h
+        feed_dict<-dict(c1 = state[[1]]$c, h1 = state[[1]]$h,
+                        c2 = state[[2]]$c, h2 = state[[2]]$h,
+                        c3 = state[[3]]$c, h3 = state[[3]]$h)
+    } else if (ncell == 4){
+        c1<-state[[1]]$c
+        h1<-state[[1]]$h
+        c2<-state[[2]]$c
+        h2<-state[[2]]$h
+        c3<-state[[3]]$c
+        h3<-state[[3]]$h
+        c4<-state[[4]]$c
+        h4<-state[[4]]$h
+        feed_dict<-dict(c1 = state[[1]]$c, h1 = state[[1]]$h,
+                        c2 = state[[2]]$c, h2 = state[[2]]$h,
+                        c3 = state[[3]]$c, h3 = state[[3]]$h,
+                        c3 = state[[4]]$c, h3 = state[[4]]$h)
+    }
     
-    message('feed_dict')
-    message(feed_dict)
-    stop()
-    # for (i in 1:length(model$initial_state)){
-    #   feed_dict[[i]]<-tuple('c'=state[[i]]$c, 'h'=state[[i]]$h)
-    #   message('feed_dict[[i]]')
-    #   message(feed_dict[[i]])
-    # }
     
     # for step in range(model.input.epoch_size):
     #   feed_dict = {}
@@ -345,9 +361,6 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
     #     feed_dict[c] = state[i].c
     #     feed_dict[h] = state[i].h
     
-    message('feed_dict')
-    message(feed_dict)
-
     #vals <- session$run(fetches=fetches, feed_dict=dict(feed_dict))
     message('costs')
     cost <- session$run(model$cost, feed_dict=dict(feed_dict))
@@ -446,9 +459,7 @@ main<-function(datapath="./_data/", verbose=TRUE, savepath=NULL, params_type='sm
     sv = tf$train$Supervisor(logdir=savepath)
     with(sv$managed_session() %as% session, {
       for(i in 1:params$max_max_epoch){
-        message('new lr')
         lr_decay = params$lr_decay ** max(i - params$max_epoch, 0.0)
-        message('assign lr')
         m$assign_lr(session, params$learning_rate * lr_decay)
 
         message(paste0("Epoch: ", i,
