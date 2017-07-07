@@ -79,10 +79,12 @@ tensorProducer<-function(raw_data, batch_size, num_steps, name=NULL){
         
         epoch_size = tf$identity(epoch_size, name='epoch_size')
         i<-tf$train$range_input_producer(epoch_size, shuffle=FALSE)$dequeue()
-        x<-tf$strided_slice(data, list(0L,(i*num_steps)), list(batch_size,((i+1L)*num_steps)))
-        x$set_shape(shape(batch_size, num_steps))
-        y<-tf$strided_slice(data, list(0L,(i*(num_steps+1L))), list(batch_size,((i+1L)*(num_steps+1L))))
-        y$set_shape(shape(batch_size, num_steps))
+        #x<-tf$strided_slice(data, list(0L,(i*num_steps)), list(batch_size,((i+1L)*num_steps)))
+        #x$set_shape(shape(batch_size, num_steps))
+        #y<-tf$strided_slice(data, list(0L,(i*(num_steps+1L))), list(batch_size,((i+1L)*(num_steps+1L))))
+        #y$set_shape(shape(batch_size, num_steps))
+        x<-tf$slice(data, list(0L,(i*num_steps)), list(batch_size,num_steps))
+        y<-tf$slice(data, list(0L,(i*(num_steps+1L))), list(batch_size,num_steps))
         })
     return(list(x,y))
 }
@@ -188,7 +190,10 @@ Model<-R6Class('Model',
         final_state = NULL,
         new_lr = NULL,
         lr_update = NULL,
+        sizey=NULL,
         initial_state = NULL,
+        onehot=NULL,
+        sizeonehot = NULL,
         
         initialize = function(is_training, params, inputs){
             private$unpack_params(params)
@@ -209,7 +214,7 @@ Model<-R6Class('Model',
             private$x <- tf$unstack(private$x, num=self$num_steps, axis=1L) 
             outputs <- tf$contrib$rnn$static_rnn(cell, private$x, self$initial_state)
             o <- tf$stack(axis=1, values=outputs[[1]])
-            self$output <- tf$reshape(tensor = o, shape = shape(-1L, self$hidden_size))  
+            self$output <- tf$reshape(tf$concat(o, 1L), shape(-1L, self$hidden_size))  
     
             weights <- tf$get_variable('weights', shape(self$hidden_size, self$vocab_size), tf$float32)
             biases <- tf$get_variable('biases', shape(1, self$vocab_size), tf$float32)
@@ -221,8 +226,12 @@ Model<-R6Class('Model',
             #                                        average_across_batch=TRUE)
             # Something was wrong with seq2seq$sequence_loss. No one knows why.
             
-            loss<-tf$nn$softmax_cross_entropy_with_logits(labels=tf$reshape(private$y, shape(-1, 1)), 
-                                                                 logits=tf$reshape(logits, shape(-1, self$vocab_size)))
+            self$sizey<-tf$shape(tf$reshape(private$y, shape(-1)))
+            #loss<-tf$contrib$legacy_seq2seq$sequence_loss_by_example(logits=logits, targets = tf$reshape(private$x, shape(-1)), weights = ones)
+            self$onehot<-tf$one_hot(tf$to_int32(tf$reshape(private$y, shape(-1))), depth = tf$to_int32(self$vocab_size))
+            self$sizeonehot<-tf$shape(self$onehot)
+            #loss<-tf$nn$softmax_cross_entropy_with_logits(labels = private$y, logits=logits)
+            loss<-tf$losses$sparse_softmax_cross_entropy(labels=private$y, logits=logits)
             
             self$cost<-tf$reduce_sum(loss) / self$batch_size
             self$final_state<-outputs[[2]]
@@ -321,14 +330,14 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
     if(ncell == 1){
         c1<-state[[1]]$c
         h1<-state[[1]]$h
-        feed_dict<-dict(c1 = state[[1]]$c, h1 = state[[1]]$h)
+        feed_dict<-dict(c1 = session$run(state[[1]]$c), h1 = session$run(state[[1]]$h))
     } else if (ncell == 2){
         c1<-state[[1]]$c
         h1<-state[[1]]$h
         c2<-state[[2]]$c
         h2<-state[[2]]$h
-        feed_dict<-dict(c1 = state[[1]]$c, h1 = state[[1]]$h,
-                        c2 = state[[2]]$c, h2 = state[[2]]$h)
+        feed_dict<-dict(c1 = session$run(state[[1]]$c), h1 = session$run(state[[1]]$h),
+                        c2 = session$run(state[[2]]$c), h2 = session$run(state[[2]]$h))
     } else if (ncell == 3){
         c1<-state[[1]]$c
         h1<-state[[1]]$h
@@ -336,9 +345,9 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
         h2<-state[[2]]$h
         c3<-state[[3]]$c
         h3<-state[[3]]$h
-        feed_dict<-dict(c1 = state[[1]]$c, h1 = state[[1]]$h,
-                        c2 = state[[2]]$c, h2 = state[[2]]$h,
-                        c3 = state[[3]]$c, h3 = state[[3]]$h)
+        feed_dict<-dict(c1 = session$run(state[[1]]$c), h1 = session$run(state[[1]]$h),
+                        c2 = session$run(state[[2]]$c), h2 = session$run(state[[2]]$h),
+                        c3 = session$run(state[[3]]$c), h3 = session$run(state[[3]]$h))
     } else if (ncell == 4){
         c1<-state[[1]]$c
         h1<-state[[1]]$h
@@ -348,10 +357,10 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
         h3<-state[[3]]$h
         c4<-state[[4]]$c
         h4<-state[[4]]$h
-        feed_dict<-dict(c1 = state[[1]]$c, h1 = state[[1]]$h,
-                        c2 = state[[2]]$c, h2 = state[[2]]$h,
-                        c3 = state[[3]]$c, h3 = state[[3]]$h,
-                        c3 = state[[4]]$c, h3 = state[[4]]$h)
+        feed_dict<-dict(c1 = session$run(state[[1]]$c), h1 = session$run(state[[1]]$h),
+                        c2 = session$run(state[[2]]$c), h2 = session$run(state[[2]]$h),
+                        c3 = session$run(state[[3]]$c), h3 = session$run(state[[3]]$h),
+                        c3 = session$run(state[[4]]$c), h3 = session$run(state[[4]]$h))
     }
     
     
@@ -362,18 +371,23 @@ run_epoch<-function(session, model, eval_op=NULL, verbose=FALSE){
     #     feed_dict[h] = state[i].h
     
     #vals <- session$run(fetches=fetches, feed_dict=dict(feed_dict))
+    message('sizey')
+    message(session$run(model$sizey))
+    message('onehot size')
+    message(session$run(model$sizeonehot))
     message('costs')
-    cost <- session$run(model$cost, feed_dict=dict(feed_dict))
+    cost <- session$run(model$cost, feed_dict=feed_dict)
     message('state')
-    state <- session$run(model$final_state, feed_dict=dict(feed_dict))
+    state <- session$run(model$final_state, feed_dict=feed_dict)
 
     costs <- costs + cost
     iters <- iters + model$input$num_steps
 
-    if (verbose && step %% (model$epoch_size %/% 10) == 10)
+    if(verbose && (step %% (model$epoch_size %/% 10) == 0)){
       message(paste0(round(step * 1.0 / model$input$epoch_size,3)," perplexity: ",
                      round(exp(costs / iters),3), " speed: ",
                      round(iters * model$input$batch_size / as.numeric(Sys.time() - start_time),3), " wps")) 
+    }
   }
   return(exp(costs / iters))
 }
@@ -484,7 +498,9 @@ main<-function(datapath="./_data/", verbose=TRUE, savepath=NULL, params_type='sm
 
 I've checked this all, and it runs, but takes a few hours on my system. I get comparable results to the example in the original code:
 
-
+```{r run_it}
+main(datapath = "../_data/")
+```
 
 For reference, here's my session_info
 
