@@ -1,0 +1,115 @@
+---
+title: "Tensorflow and Keras"
+author: "Phil Bulsink"
+date: "July 10, 2017"
+output: html_document
+status: process
+published: true
+layout: post
+excerpt_separator: <!--more-->
+maps: true
+tags: R NLP RNN LSTM TensorFlow
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(keras)
+```
+
+[Previously](https://pbulsink.github.io/blog/2017-06-21/tensorflow_intro.html), we visited TensorFlow and R and used it to (overfit) model a bit of language. Let's go back and work on a larger portion of text with a better model, to see what we can do to 'genericize' the predictions.
+
+This time, we'll model our code on the tensorflow example discussed in their [tutorials](https://www.tensorflow.org/tutorials/recurrent), with the code hosted on their [GitHub](https://github.com/tensorflow/models/blob/master/tutorials/rnn/ptb). As much as I've tried to replecate this in pure R, there's a few issues that keep popping up. In my searches, I've discovered [Keras](https://keras.io/) as a wrapper for tensorflow (and other neural network backends), and I'll use that to abstract over tensorflow. 
+
+<!--more-->
+
+We'll start by installing [Keras for R](https://rstudio.github.io/keras) (and Tensorflow, if you haven't already done that).
+
+```{r install, eval=FALSE}
+devtools::install_github("rstudio/keras")
+library(keras)
+
+#If you haven't installed tensorflow yet:
+install_tensorflow()
+```
+
+As with the tensorflow tutorial devs, we'll use the [Penn Tree Bank](https://catalog.ldc.upenn.edu/ldc99t42) dataset, particularly the files in the `data/` folder. As does the [`reader.py`](https://github.com/tensorflow/models/blob/master/tutorials/rnn/ptb/reader.py) script, we'll convert each file's text to a numeric representation with a dictionary lookup. This will just be a formalized set of what we demonstrated last time, so look at the code for this post on [GitHub](https://github.com/pbulsink/pbulsink.github.io/tree/master/_rmd_published/tensorflow_and_keras.Rmd) to see what's happening. 
+
+```{r dataprep, include=FALSE, cache=TRUE}
+integerize<-function(text, dictionary){
+    text_v <- rep(0, length(text))
+    for(i in 1:length(dictionary)){
+        text_v[which(text == dictionary[[i]])]<-i
+    }   
+    return(text_v)
+}
+
+prepData<-function(datapath="./_data/"){
+    
+    ptb_test<-readLines(paste0(datapath, "ptb.test.txt"))
+    ptb_train<-readLines(paste0(datapath, "ptb.train.txt"))
+    ptb_valid<-readLines(paste0(datapath, "ptb.valid.txt"))
+    
+    ptb_test<-unlist(strsplit(paste(ptb_test, collapse="<eos>"), " "))
+    ptb_train<-unlist(strsplit(paste(ptb_train, collapse="<eos>"), " "))
+    ptb_valid<-unlist(strsplit(paste(ptb_valid, collapse="<eos>"), " "))
+    
+    vocab<-unique(names(sort(table(ptb_test), decreasing = TRUE)))
+    
+    test_v<-integerize(ptb_test, vocab)
+    train_v<-integerize(ptb_train, vocab)
+    valid_v<-integerize(ptb_valid, vocab)
+    
+    return(list(test_data=test_v, train_data=train_v, valid_data=valid_v, vocab=vocab))
+}
+```
+
+Lets start by adding some parameters:
+```{r parameters}
+init_scale <- 0.1
+learning_rate <- 1.0
+lr<-learning_rate
+max_grad_norm <- 5
+num_layers <- 2
+num_steps <- 20
+hidden_size <- 200
+forget_bias<-0
+max_epoch <- 4
+max_max_epoch <- 13
+keep_prob <- 1.0
+lr_decay <- 0.5
+batch_size <- 20
+vocab_size <- 10000
+```
+
+Keras treats a model as a mutable object, meaning that we modify it in place (instead of assigning). We build a model by implementing a basic frame, then adding components, like this:
+
+```{r model}
+model <- keras_model_sequential()
+model %>% 
+    layer_lstm(hidden_size, input_shape=c(num_steps), stateful=TRUE, dropout = 1-keep_prob)
+    layer_lstm(hidden_size, stateful=TRUE, dropout = 1-keep_prob)
+    layer_activation('softmax')
+```
+
+Once our model is specified, we need to compile it before we can start training:
+```{r compile}
+model %>% compile(
+    optimizer = optimizer_sgd(lr = lr),
+    loss = 'loss_sparse_categorical_crossentropy',
+    metrics = c('accuracy', 'metric_sparse_categorical_crossentropy')
+)
+```
+
+To train the model: 
+```{r train}
+model %>% fit(
+    x_train, 
+    y_train, 
+    epochs = max_max_epoch, 
+    batch_size = batch_size, 
+    callbacks = list(
+        callback_reduce_lr_on_plateau(monitor = "val_loss", factor = 0.1)
+    )
+)
+```
+

@@ -23,7 +23,7 @@ This time, we'll model our code on the tensorflow example discussed in their [tu
 
 <!--more-->
 
-As with them, we'll use the [Penn Tree Bank](https://catalog.ldc.upenn.edu/ldc99t42) dataset, particularly the files in the `data/` folder. As does the [`reader.py`](https://github.com/tensorflow/models/blob/master/tutorials/rnn/ptb/reader.py) script, we'll convert each file's text to a numeric representation with a dictionary lookup. This will just be a formalized set of what we demonstrated last time, so look at the code for this post on [GitHub](https://github.com/pbulsink/pbulsink.github.io/tree/master/_rmd_published/rensorflow_revisited.Rmd) to see what's happening. 
+As with them, we'll use the [Penn Tree Bank](https://catalog.ldc.upenn.edu/ldc99t42) dataset, particularly the files in the `data/` folder. As does the [`reader.py`](https://github.com/tensorflow/models/blob/master/tutorials/rnn/ptb/reader.py) script, we'll convert each file's text to a numeric representation with a dictionary lookup. This will just be a formalized set of what we demonstrated last time, so look at the code for this post on [GitHub](https://github.com/pbulsink/pbulsink.github.io/tree/master/_rmd_published/tensorflow_revisited.Rmd) to see what's happening. 
 
 ```{r dataprep, include=FALSE, cache=TRUE}
 integerize<-function(text, dictionary){
