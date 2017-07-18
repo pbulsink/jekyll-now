@@ -63,6 +63,10 @@ prepData<-function(datapath="./_data/"){
 }
 ```
 
+The first thing to consider is how we'll subsample the data for training. We need to collect a certain proportion for validation of our training. 
+
+
+
 Lets start by adding some parameters:
 ```{r parameters}
 init_scale <- 0.1
@@ -86,8 +90,8 @@ Keras treats a model as a mutable object, meaning that we modify it in place (in
 ```{r model}
 model <- keras_model_sequential()
 model %>% 
-    layer_lstm(hidden_size, input_shape=c(num_steps), stateful=TRUE, dropout = 1-keep_prob)
-    layer_lstm(hidden_size, stateful=TRUE, dropout = 1-keep_prob)
+    layer_lstm(hidden_size, batch_input_shape=c(1,1,1), return_sequences=FALSE, stateful=TRUE, dropout = 1-keep_prob) %>%
+    #layer_lstm(hidden_size, stateful=TRUE, return_sequences=FALSE, dropout = 1-keep_prob) %>%
     layer_activation('softmax')
 ```
 
@@ -95,21 +99,45 @@ Once our model is specified, we need to compile it before we can start training:
 ```{r compile}
 model %>% compile(
     optimizer = optimizer_sgd(lr = lr),
-    loss = 'loss_sparse_categorical_crossentropy',
-    metrics = c('accuracy', 'metric_sparse_categorical_crossentropy')
+    loss = 'sparse_categorical_crossentropy',
+    metrics = c('accuracy', 'sparse_categorical_crossentropy')
 )
 ```
 
 To train the model: 
 ```{r train}
-model %>% fit(
-    x_train, 
-    y_train, 
-    epochs = max_max_epoch, 
-    batch_size = batch_size, 
-    callbacks = list(
-        callback_reduce_lr_on_plateau(monitor = "val_loss", factor = 0.1)
-    )
-)
+for(epoch in 1:max_epoch){
+    mean_tr_acc<-numeric()
+    mean_tr_loss<-numeric()
+    mean_test_acc<-numeric()
+    mean_test_loss<-numeric()
+    message(paste0("Epoch ", epoch))
+    for(i in 1:length(x_train)){
+        y_true <- array(y_train[i])
+        for(j in 1:num_steps){
+            output<-model$train_on_batch(array(x_train[i][j]), y_true)
+            mean_tr_acc<-c(mean_tr_acc, ouput[[1]])
+            mean_tr_loss<-c(mean_tr_loss, output[[2]])
+        }
+        model$reset_states()
+    }
+    message(paste0('Accuracy Training = ', round(mean(mean_tr_acc), 3)))
+    message(paste0('Loss Training = ', round(mean(mean_tr_loss), 3)))
+    message('*********')
+    
+    for(i in 1:length(x_test)){
+        y_true <- array(y_test[i])
+        for(j in 1:num_steps){
+            output<-model$test_on_batch(array(x_test[i][j]), y_true)
+            mean_test_acc<-c(mean_tr_acc, ouput[[1]])
+            mean_test_loss<-c(mean_tr_loss, output[[2]])
+        }
+        model$reset_states()
+    }
+    
+    message(paste0('Accuracy Test = ', round(mean(mean_test_acc), 3)))
+    message(paste0('Loss Test = ', round(mean(mean_test_loss), 3)))
+    message('*********')
+}
 ```
 
