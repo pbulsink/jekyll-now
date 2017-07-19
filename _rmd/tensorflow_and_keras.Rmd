@@ -14,6 +14,7 @@ tags: R NLP RNN LSTM TensorFlow
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(keras)
+library(tictoc)
 ```
 
 [Previously](https://pbulsink.github.io/blog/2017-06-21/tensorflow_intro.html), we visited TensorFlow and R and used it to (overfit) model a bit of language. Let's go back and work on a larger portion of text with a better model, to see what we can do to 'genericize' the predictions.
@@ -61,10 +62,20 @@ prepData<-function(datapath="./_data/"){
     
     return(list(test_data=test_v, train_data=train_v, valid_data=valid_v, vocab=vocab))
 }
+
 ```
 
-The first thing to consider is how we'll subsample the data for training. We need to collect a certain proportion for validation of our training. 
+The first thing to consider is how we'll subsample the data for training. We need to collect a certain proportion for validation of our training. This is done for us by the ptb set, but we should consider it for any other wordsource. We've also got to split the data to 20 word chunks
 
+```{r}
+datapath<-"../_data/"
+data<-prepData(datapath)
+x_test<-test_data<-data$test_data
+x_train<-train_data<-data$train_data
+x_val<-valid_data<-data$valid_data
+vocab<-data$vocab
+
+```
 
 
 Lets start by adding some parameters:
@@ -106,16 +117,17 @@ model %>% compile(
 
 To train the model: 
 ```{r train}
+tic()
 for(epoch in 1:max_epoch){
     mean_tr_acc<-numeric()
     mean_tr_loss<-numeric()
     mean_test_acc<-numeric()
     mean_test_loss<-numeric()
     message(paste0("Epoch ", epoch))
-    for(i in 1:length(x_train)){
-        y_true <- array(y_train[i])
+    for(i in 1:(length(x_train)-num_steps)){
+        y_true <- array(x_train[i+num_steps])
         for(j in 1:num_steps){
-            output<-model$train_on_batch(array(x_train[i][j]), y_true)
+            output<-model$train_on_batch(array(x_train[i:i+j]), y_true)
             mean_tr_acc<-c(mean_tr_acc, ouput[[1]])
             mean_tr_loss<-c(mean_tr_loss, output[[2]])
         }
@@ -125,10 +137,10 @@ for(epoch in 1:max_epoch){
     message(paste0('Loss Training = ', round(mean(mean_tr_loss), 3)))
     message('*********')
     
-    for(i in 1:length(x_test)){
-        y_true <- array(y_test[i])
+    for(i in 1:(length(x_test)-num_steps)){
+        y_true <- array(x_test[i+num_steps])
         for(j in 1:num_steps){
-            output<-model$test_on_batch(array(x_test[i][j]), y_true)
+            output<-model$test_on_batch(array(x_test[i:i+j]), y_true)
             mean_test_acc<-c(mean_tr_acc, ouput[[1]])
             mean_test_loss<-c(mean_tr_loss, output[[2]])
         }
@@ -139,5 +151,23 @@ for(epoch in 1:max_epoch){
     message(paste0('Loss Test = ', round(mean(mean_test_loss), 3)))
     message('*********')
 }
+
+mean_val_acc<-numeric()
+mean_val_loss<-numeric()
+
+for(i in 1:(length(x_val)-num_steps)){
+    y_true <- array(x_val[i+num_steps])
+    for(j in 1:num_steps){
+        output<-model$test_on_batch(array(x_val[i:i+j]), y_true)
+        mean_val_acc<-c(mean_tr_acc, ouput[[1]])
+        mean_val_loss<-c(mean_tr_loss, output[[2]])
+    }
+    model$reset_states()
+}
+
+message(paste0('Accuracy Val = ', round(mean(mean_val_acc), 3)))
+message(paste0('Loss Val = ', round(mean(mean_val_loss), 3)))
+message('*********')
+toc()
 ```
 
